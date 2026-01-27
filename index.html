@@ -2,7 +2,7 @@
 <html lang="es" class="dark">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
     <title>Aura Control - Juan & Guille</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
@@ -13,9 +13,7 @@
                     colors: {
                         'aura-black': '#050505',
                         'aura-cyan': '#00F2FF',
-                        'aura-blue': '#2563eb',
-                        'aura-green': '#10b981',
-                        'aura-red': '#ef4444'
+                        'aura-dark-cyan': '#008F99',
                     }
                 }
             }
@@ -24,14 +22,13 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
 
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #050505; color: white; }
+        body { font-family: sans-serif; background-color: #050505; color: white; overflow-x: hidden; }
         
-        /* Estilo para los Inputs de Reloj */
-        input[type="time"]::-webkit-calendar-picker-indicator {
-            filter: invert(1); cursor: pointer;
-        }
+        /* Animación suave de pestañas */
+        .tab-content { display: none; opacity: 0; transition: opacity 0.3s ease-in-out; }
+        .tab-content.active { display: block; opacity: 1; }
 
-        /* Estilo del Switch (Interruptor) */
+        /* ESTILO DEL INTERRUPTOR (SWITCH) - REPARADO */
         .toggle-checkbox:checked {
             right: 0;
             border-color: #00F2FF;
@@ -39,206 +36,209 @@
         .toggle-checkbox:checked + .toggle-label {
             background-color: #00F2FF;
         }
-        
-        /* Animaciones */
-        .reveal-on-scroll { opacity: 0; transform: translateY(20px); transition: all 0.8s ease; }
-        .reveal-visible { opacity: 1 !important; transform: translateY(0) !important; }
-        
-        /* Glow Efecto */
-        .card-active {
-            box-shadow: 0 0 40px rgba(0, 242, 255, 0.15);
-            border-color: rgba(0, 242, 255, 0.4) !important;
+        .toggle-checkbox {
+            right: 50%; /* Posición inicial (Apagado) */
         }
+        .toggle-label {
+            width: 3rem; height: 1.5rem;
+        }
+        
+        /* Inputs de Hora */
+        input[type="time"] { color-scheme: dark; }
     </style>
 </head>
 
-<body class="antialiased bg-aura-black text-white selection:bg-aura-cyan/30">
+<body class="bg-aura-black text-white">
 
-    <div id="lock-screen" class="fixed inset-0 z-[100] bg-aura-black flex flex-col items-center justify-center transition-opacity duration-500">
-        <div class="text-center p-8 rounded-3xl border border-white/10 bg-white/5 backdrop-blur-md">
-            <h2 class="text-2xl font-bold text-white mb-2 tracking-widest">SISTEMA CERRADO</h2>
-            <p class="text-white/40 text-sm mb-6">Juan & Guille Control</p>
-            <input type="password" id="pass-input" placeholder="Código..." 
-                   class="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white text-center outline-none focus:border-aura-cyan mb-4 text-lg tracking-widest">
-            <button onclick="verificarPassword()" class="w-full py-3 bg-aura-cyan text-aura-black font-bold rounded-xl hover:bg-white transition-all">ENTRAR</button>
-            <p id="error-msg" class="text-red-500 text-xs mt-4 font-bold hidden animate-pulse">ACCESO DENEGADO</p>
+    <div id="lock-screen" class="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center transition-opacity duration-500">
+        <div class="text-center p-8 w-80">
+            <h2 class="text-2xl font-bold text-aura-cyan mb-6 tracking-widest">SISTEMA CERRADO</h2>
+            <input type="password" id="pass-input" placeholder="Clave..." class="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white text-center text-lg focus:border-aura-cyan outline-none mb-4">
+            <button onclick="verificarPassword()" class="w-full py-3 bg-aura-cyan text-black font-bold rounded-xl">ENTRAR</button>
+            <p id="error-msg" class="text-red-500 text-xs mt-4 hidden">CLAVE INCORRECTA</p>
         </div>
     </div>
 
-    <div id="tsparticles" class="fixed inset-0 -z-10"></div>
-    
-    <main class="min-h-screen relative z-10 flex flex-col">
-        <nav class="fixed top-0 w-full z-50 flex justify-between px-6 py-4 backdrop-blur-md bg-aura-black/50 border-b border-white/10">
-            <div class="flex items-center gap-2">
-                <div class="w-3 h-3 rounded-full bg-aura-cyan animate-pulse"></div>
-                <span class="font-bold tracking-widest uppercase">Aura <span class="text-aura-cyan">System</span></span>
-            </div>
-            <div id="connection-status" class="text-xs font-mono text-red-500 flex items-center gap-1">
-                ● OFF
-            </div>
-        </nav>
+    <nav class="fixed top-0 w-full z-50 bg-black/80 backdrop-blur-md border-b border-white/10 px-4 py-3 flex justify-between items-center">
+        <div class="flex items-center gap-2">
+            <div class="w-2 h-2 rounded-full bg-aura-cyan animate-pulse"></div>
+            <span class="font-bold tracking-widest text-sm">AURA <span class="text-aura-cyan">SYSTEM</span></span>
+        </div>
+        <div id="connection-status" class="text-xs font-mono text-red-500">● OFF</div>
+    </nav>
 
-        <section class="flex-grow flex flex-col items-center justify-center pt-24 pb-12 px-6">
-            <div class="text-center mb-10">
-                <h1 class="text-4xl md:text-5xl font-black mb-2">Panel de Control</h1>
-                <p class="text-white/40 text-sm">Hora del Sistema: <span id="system-time" class="text-aura-cyan font-mono">--:--:--</span></p>
-            </div>
+    <div class="fixed top-14 w-full z-40 px-4">
+        <div class="flex bg-gray-900 rounded-xl p-1 border border-white/10">
+            <button onclick="switchTab('juan')" id="btn-juan" class="flex-1 py-2 rounded-lg text-sm font-bold transition-all bg-aura-cyan text-black">JUAN</button>
+            <button onclick="switchTab('guille')" id="btn-guille" class="flex-1 py-2 rounded-lg text-sm font-bold transition-all text-white/50 hover:text-white">GUILLE</button>
+        </div>
+    </div>
 
-            <div class="grid md:grid-cols-2 gap-8 w-full max-w-4xl">
+    <main class="pt-32 pb-10 px-4 min-h-screen flex flex-col items-center">
+        
+        <div class="mb-6 text-center">
+            <p class="text-xs text-white/40 uppercase">Hora Sistema (ESP32)</p>
+            <p id="system-time" class="text-2xl font-mono text-aura-cyan mt-1">--:--:--</p>
+        </div>
 
-                <div id="card-b1" class="reveal-on-scroll p-8 rounded-3xl bg-white/5 border border-white/10 transition-all duration-300">
-                    <div class="flex justify-between items-center mb-8">
-                        <div>
-                            <h2 class="text-3xl font-bold text-white">Juan</h2>
-                            <p class="text-xs text-white/40 uppercase tracking-widest">Bomba Cocina</p>
-                        </div>
-                        <div class="relative inline-block w-16 align-middle select-none transition duration-200 ease-in">
-                            <input type="checkbox" name="toggle" id="switch-b1" class="toggle-checkbox absolute block w-8 h-8 rounded-full bg-white border-4 appearance-none cursor-pointer transition-all duration-300 left-0" style="top: -4px;" onchange="toggleBomba(1)">
-                            <label for="switch-b1" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-700 cursor-pointer"></label>
-                        </div>
-                    </div>
+        <div id="tab-juan" class="tab-content active w-full max-w-md">
+            <div class="p-6 rounded-3xl bg-gray-900/50 border border-white/10 relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-24 h-24 bg-aura-cyan/5 rounded-full blur-3xl -z-10"></div>
 
-                    <div class="p-5 rounded-2xl bg-black/30 border border-white/5 mb-6">
-                        <label class="block text-xs text-white/40 uppercase mb-3 flex items-center gap-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                            Programar Turno
-                        </label>
-                        <div class="flex items-center gap-2 mb-3">
-                            <input type="time" id="start-b1" class="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-3 text-white text-center text-lg focus:border-aura-cyan outline-none">
-                            <span class="text-white/30">-</span>
-                            <input type="time" id="end-b1" class="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-3 text-white text-center text-lg focus:border-aura-cyan outline-none">
-                        </div>
-                        <button onclick="programarReloj(1)" class="w-full py-2 bg-white/10 rounded-lg hover:bg-aura-cyan hover:text-black transition-colors text-sm font-bold uppercase tracking-wider">
-                            Guardar Horario
-                        </button>
-                        <p id="info-b1" class="text-xs text-aura-cyan/70 mt-3 text-center font-mono">--</p>
-                    </div>
-
+                <div class="flex justify-between items-center mb-8">
                     <div>
-                        <div class="flex justify-between text-xs text-white/60 mb-2">
-                            <span>Temporizador</span>
-                            <span id="val-timer-b1" class="text-aura-cyan">Manual</span>
-                        </div>
-                        <input type="range" min="0" max="60" value="0" class="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer" oninput="updateSliderVal(1, this.value)" onchange="setTimer(1, this.value)">
+                        <h2 class="text-3xl font-black text-white">JUAN</h2>
+                        <p class="text-xs text-aura-cyan uppercase tracking-widest font-bold">Bomba 1</p>
+                    </div>
+                    
+                    <div class="relative inline-block w-12 mr-2 align-middle select-none">
+                        <input type="checkbox" id="switch-b1" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 border-gray-900 appearance-none cursor-pointer transition-all duration-300" style="top: 0;" onchange="toggleBomba(1)">
+                        <label for="switch-b1" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-700 cursor-pointer transition-colors duration-300"></label>
                     </div>
                 </div>
 
-                <div id="card-b2" class="reveal-on-scroll p-8 rounded-3xl bg-white/5 border border-white/10 transition-all duration-300">
-                    <div class="flex justify-between items-center mb-8">
-                        <div>
-                            <h2 class="text-3xl font-bold text-white">Guille</h2>
-                            <p class="text-xs text-white/40 uppercase tracking-widest">Bomba Riego</p>
-                        </div>
-                        <div class="relative inline-block w-16 align-middle select-none transition duration-200 ease-in">
-                            <input type="checkbox" name="toggle" id="switch-b2" class="toggle-checkbox absolute block w-8 h-8 rounded-full bg-white border-4 appearance-none cursor-pointer transition-all duration-300 left-0" style="top: -4px;" onchange="toggleBomba(2)">
-                            <label for="switch-b2" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-700 cursor-pointer"></label>
-                        </div>
+                <div class="bg-black/40 rounded-xl p-4 mb-4 border border-white/5">
+                    <label class="text-xs text-white/50 uppercase block mb-2">Programar Horario</label>
+                    <div class="flex gap-2 mb-3">
+                        <input type="time" id="start-b1" class="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-center outline-none focus:border-aura-cyan">
+                        <input type="time" id="end-b1" class="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-center outline-none focus:border-aura-cyan">
                     </div>
+                    <button onclick="programarReloj(1)" class="w-full py-2 bg-white/10 hover:bg-aura-cyan hover:text-black rounded-lg text-xs font-bold transition-colors">ENVIAR HORARIO</button>
+                    <p id="info-b1" class="text-xs text-center mt-2 text-white/30">--</p>
+                </div>
 
-                    <div class="p-5 rounded-2xl bg-black/30 border border-white/5 mb-6">
-                        <label class="block text-xs text-white/40 uppercase mb-3 flex items-center gap-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                            Programar Turno
-                        </label>
-                        <div class="flex items-center gap-2 mb-3">
-                            <input type="time" id="start-b2" class="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-3 text-white text-center text-lg focus:border-aura-cyan outline-none">
-                            <span class="text-white/30">-</span>
-                            <input type="time" id="end-b2" class="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-3 text-white text-center text-lg focus:border-aura-cyan outline-none">
-                        </div>
-                        <button onclick="programarReloj(2)" class="w-full py-2 bg-white/10 rounded-lg hover:bg-aura-cyan hover:text-black transition-colors text-sm font-bold uppercase tracking-wider">
-                            Guardar Horario
-                        </button>
-                        <p id="info-b2" class="text-xs text-aura-cyan/70 mt-3 text-center font-mono">--</p>
+                <div>
+                    <div class="flex justify-between text-xs text-white/50 mb-2">
+                        <span>Timer Manual</span>
+                        <span id="val-timer-b1" class="text-aura-cyan">Desactivado</span>
                     </div>
+                    <input type="range" min="0" max="60" value="0" class="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-aura-cyan" oninput="updateSlider(1, this.value)" onchange="setTimer(1, this.value)">
+                </div>
+            </div>
+        </div>
 
+        <div id="tab-guille" class="tab-content w-full max-w-md">
+             <div class="p-6 rounded-3xl bg-gray-900/50 border border-white/10 relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-24 h-24 bg-purple-500/5 rounded-full blur-3xl -z-10"></div>
+
+                <div class="flex justify-between items-center mb-8">
                     <div>
-                        <div class="flex justify-between text-xs text-white/60 mb-2">
-                            <span>Temporizador</span>
-                            <span id="val-timer-b2" class="text-aura-cyan">Manual</span>
-                        </div>
-                        <input type="range" min="0" max="60" value="0" class="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer" oninput="updateSliderVal(2, this.value)" onchange="setTimer(2, this.value)">
+                        <h2 class="text-3xl font-black text-white">GUILLE</h2>
+                        <p class="text-xs text-purple-400 uppercase tracking-widest font-bold">Bomba 2</p>
+                    </div>
+                    
+                    <div class="relative inline-block w-12 mr-2 align-middle select-none">
+                        <input type="checkbox" id="switch-b2" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 border-gray-900 appearance-none cursor-pointer transition-all duration-300" style="top: 0;" onchange="toggleBomba(2)">
+                        <label for="switch-b2" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-700 cursor-pointer transition-colors duration-300"></label>
                     </div>
                 </div>
 
+                <div class="bg-black/40 rounded-xl p-4 mb-4 border border-white/5">
+                    <label class="text-xs text-white/50 uppercase block mb-2">Programar Horario</label>
+                    <div class="flex gap-2 mb-3">
+                        <input type="time" id="start-b2" class="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-center outline-none focus:border-aura-cyan">
+                        <input type="time" id="end-b2" class="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-center outline-none focus:border-aura-cyan">
+                    </div>
+                    <button onclick="programarReloj(2)" class="w-full py-2 bg-white/10 hover:bg-purple-400 hover:text-black rounded-lg text-xs font-bold transition-colors">ENVIAR HORARIO</button>
+                    <p id="info-b2" class="text-xs text-center mt-2 text-white/30">--</p>
+                </div>
+
+                <div>
+                    <div class="flex justify-between text-xs text-white/50 mb-2">
+                        <span>Timer Manual</span>
+                        <span id="val-timer-b2" class="text-purple-400">Desactivado</span>
+                    </div>
+                    <input type="range" min="0" max="60" value="0" class="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-400" oninput="updateSlider(2, this.value)" onchange="setTimer(2, this.value)">
+                </div>
             </div>
-        </section>
+        </div>
+
     </main>
 
-    <script src="https://cdn.jsdelivr.net/npm/tsparticles@2.11.0/tsparticles.bundle.min.js"></script>
     <script>
-        // --- CONTRASEÑA ---
-        const CLAVE = "1234"; // CAMBIAR AQUI
+        // --- 1. SEGURIDAD ---
+        const CLAVE = "1234"; // TU CONTRASEÑA
         
         function verificarPassword() {
             if(document.getElementById('pass-input').value === CLAVE) {
                 document.getElementById('lock-screen').style.opacity = '0';
                 setTimeout(() => document.getElementById('lock-screen').style.display = 'none', 500);
-                localStorage.setItem('juan_guille_auth', 'ok');
+                localStorage.setItem('auth_juan_guille', 'ok');
             } else {
                 document.getElementById('error-msg').classList.remove('hidden');
             }
         }
-        if(localStorage.getItem('juan_guille_auth') === 'ok') document.getElementById('lock-screen').style.display = 'none';
+        if(localStorage.getItem('auth_juan_guille') === 'ok') document.getElementById('lock-screen').style.display = 'none';
 
-        // --- VISUALES ---
-        tsParticles.load("tsparticles", {
-            particles: { number: { value: 40 }, color: { value: "#00F2FF" }, opacity: { value: 0.2 }, size: { value: 2 }, links: { enable: true, color: "#00F2FF", opacity: 0.1 }, move: { enable: true, speed: 0.4 } }
-        });
-        
-        const observer = new IntersectionObserver(entries => entries.forEach(entry => {
-            if (entry.isIntersecting) entry.target.classList.add('reveal-visible');
-        }));
-        document.querySelectorAll('.reveal-on-scroll').forEach(el => observer.observe(el));
+        // --- 2. LÓGICA DE PESTAÑAS ---
+        function switchTab(tab) {
+            // Ocultar todas
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            // Resetear botones
+            document.getElementById('btn-juan').className = "flex-1 py-2 rounded-lg text-sm font-bold transition-all text-white/50 hover:text-white";
+            document.getElementById('btn-guille').className = "flex-1 py-2 rounded-lg text-sm font-bold transition-all text-white/50 hover:text-white";
 
-        // --- LOGICA MQTT ---
+            // Mostrar seleccionada
+            document.getElementById('tab-' + tab).classList.add('active');
+            
+            // Estilo boton activo
+            if(tab === 'juan') {
+                document.getElementById('btn-juan').className = "flex-1 py-2 rounded-lg text-sm font-bold transition-all bg-aura-cyan text-black shadow-[0_0_15px_rgba(0,242,255,0.3)]";
+            } else {
+                document.getElementById('btn-guille').className = "flex-1 py-2 rounded-lg text-sm font-bold transition-all bg-purple-500 text-black shadow-[0_0_15px_rgba(168,85,247,0.3)]";
+            }
+        }
+
+        // --- 3. MQTT ---
         const host = "7e2fd3d035dd4308b9d04e70e8989f24.s1.eu.hivemq.cloud";
         const port = 8884;
         const clientId = "Web-" + Math.random().toString(16).substr(2, 8);
         const client = new Paho.MQTT.Client(host, port, clientId);
 
         client.onConnectionLost = (resp) => {
-            console.log("Perdida", resp);
             document.getElementById("connection-status").innerHTML = "● OFF";
-            document.getElementById("connection-status").className = "text-xs font-mono text-red-500 flex items-center gap-1";
+            document.getElementById("connection-status").className = "text-xs font-mono text-red-500";
         };
 
         client.onMessageArrived = (msg) => {
             const topic = msg.destinationName;
             const payload = msg.payloadString;
 
-            if (topic === "casa/sistema/hora") document.getElementById("system-time").innerText = payload;
+            // HORA SISTEMA
+            if (topic === "casa/sistema/hora") {
+                document.getElementById("system-time").innerText = payload;
+            }
             
-            // Actualizar Switch Juan
+            // BOMBA 1 (JUAN)
             if (topic === "casa/bomba1/estado") {
                 const isOn = (payload === "ON" || payload.includes("ENCENDIDA"));
                 document.getElementById("switch-b1").checked = isOn;
-                updateCardStyle(1, isOn);
             }
-            // Actualizar Switch Guille
+            if (topic === "casa/bomba1/info1") document.getElementById("info-b1").innerText = "Guardado: " + payload;
+
+            // BOMBA 2 (GUILLE)
             if (topic === "casa/bomba2/estado") {
                 const isOn = (payload === "ON" || payload.includes("ENCENDIDA"));
                 document.getElementById("switch-b2").checked = isOn;
-                updateCardStyle(2, isOn);
             }
-
-            if (topic === "casa/bomba1/info1") document.getElementById("info-b1").innerText = "Programado: " + payload;
-            if (topic === "casa/bomba2/info1") document.getElementById("info-b2").innerText = "Programado: " + payload;
+            if (topic === "casa/bomba2/info1") document.getElementById("info-b2").innerText = "Guardado: " + payload;
         };
 
         client.connect({
             useSSL: true, userName: "bombas", password: "Halcon2015",
             onSuccess: () => {
                 document.getElementById("connection-status").innerHTML = "● ONLINE";
-                document.getElementById("connection-status").className = "text-xs font-mono text-aura-green flex items-center gap-1";
-                client.subscribe("casa/bomba1/estado");
-                client.subscribe("casa/bomba2/estado");
-                client.subscribe("casa/bomba1/info1");
-                client.subscribe("casa/bomba2/info1");
+                document.getElementById("connection-status").className = "text-xs font-mono text-aura-cyan";
+                
                 client.subscribe("casa/sistema/hora");
+                client.subscribe("casa/bomba1/estado");
+                client.subscribe("casa/bomba1/info1");
+                client.subscribe("casa/bomba2/estado");
+                client.subscribe("casa/bomba2/info1");
             }
         });
 
-        // --- FUNCIONES DE CONTROL ---
+        // --- 4. FUNCIONES DE CONTROL ---
         function enviar(topic, msg) {
             message = new Paho.MQTT.Message(msg);
             message.destinationName = topic;
@@ -246,21 +246,20 @@
         }
 
         function toggleBomba(id) {
-            const isChecked = document.getElementById(`switch-b${id}`).checked;
-            const cmd = isChecked ? "ON" : "OFF";
+            const check = document.getElementById(`switch-b${id}`);
+            // Pequeño delay para que la animación fluya antes de confirmar
+            const cmd = check.checked ? "ON" : "OFF";
             enviar(`casa/bomba${id}/comando`, cmd);
         }
 
         function programarReloj(id) {
-            const start = document.getElementById(`start-b${id}`).value; // Formato HH:MM
-            const end = document.getElementById(`end-b${id}`).value;     // Formato HH:MM
-            
+            const start = document.getElementById(`start-b${id}`).value;
+            const end = document.getElementById(`end-b${id}`).value;
             if(start && end) {
-                const rango = `${start}-${end}`; // Crea "08:00-08:15"
-                enviar(`casa/bomba${id}/turno1`, rango);
+                enviar(`casa/bomba${id}/turno1`, `${start}-${end}`);
                 document.getElementById(`info-b${id}`).innerText = "Enviando...";
             } else {
-                alert("Por favor selecciona ambas horas");
+                alert("Completa ambas horas");
             }
         }
 
@@ -268,14 +267,9 @@
             enviar(`casa/bomba${id}/set_timer`, val.toString());
         }
 
-        function updateSliderVal(id, val) {
-            document.getElementById(`val-timer-b${id}`).innerText = val > 0 ? val + " min" : "Manual";
-        }
-
-        function updateCardStyle(id, isOn) {
-            const card = document.getElementById(`card-b${id}`);
-            if(isOn) card.classList.add('card-active');
-            else card.classList.remove('card-active');
+        function updateSlider(id, val) {
+            const label = document.getElementById(`val-timer-b${id}`);
+            label.innerText = val > 0 ? val + " min" : "Desactivado";
         }
     </script>
 </body>

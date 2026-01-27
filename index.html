@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Aura Control - Sistema Hidráulico</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'aura-black': '#050505',
+                        'aura-cyan': '#00F2FF',
+                        'aura-blue': '#2563eb',
+                        'aura-green': '#10b981',
+                        'aura-red': '#ef4444',
+                        'aura-midnight': '#0a0a0a'
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
+
+    <style>
+        /* --- ESTILOS CRÍTICOS --- */
+        html { scroll-behavior: smooth; }
+        body { font-family: 'Inter', sans-serif; background-color: #050505; color: white; }
+
+        /* Fondo de Partículas */
+        #tsparticles {
+            position: fixed; width: 100%; height: 100%;
+            top: 0; left: 0; z-index: -1; pointer-events: none;
+        }
+
+        /* Sliders Personalizados */
+        input[type=range] {
+            -webkit-appearance: none; width: 100%; background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%;
+            background: #00F2FF; cursor: pointer; margin-top: -6px;
+            box-shadow: 0 0 10px #00F2FF;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%; height: 4px; cursor: pointer; background: rgba(255,255,255,0.1); border-radius: 2px;
+        }
+
+        /* Animaciones de entrada */
+        .reveal-on-scroll {
+            opacity: 0; transform: translateY(20px);
+            transition: all 0.8s cubic-bezier(0.5, 0, 0, 1);
+        }
+        .reveal-visible { opacity: 1 !important; transform: translateY(0) !important; }
+
+        /* Efecto Glow en Tarjetas Activas */
+        .card-active {
+            border-color: rgba(0, 242, 255, 0.5) !important;
+            box-shadow: 0 0 30px rgba(0, 242, 255, 0.1);
+        }
+    </style>
+</head>
+
+<body class="antialiased bg-aura-black text-white selection:bg-aura-cyan/30">
+
+    <div id="tsparticles"></div>
+    
+    <main class="min-h-screen relative z-10 flex flex-col">
+        <nav class="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-4 backdrop-blur-md border-b border-white/10 bg-aura-black/50">
+            <div class="flex items-center gap-2">
+                <div class="p-2 rounded-lg bg-aura-cyan/10 border border-aura-cyan/20">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-aura-cyan"><path d="M12 2v20M2 12h20"></path></svg>
+                </div>
+                <span class="text-xl font-bold tracking-tighter text-white uppercase">Aura <span class="text-aura-cyan">Control</span></span>
+            </div>
+            
+            <div id="connection-badge" class="px-3 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-500 text-xs font-bold uppercase tracking-widest flex items-center gap-2">
+                <div id="connection-dot" class="w-2 h-2 rounded-full bg-red-500"></div>
+                <span id="connection-text">Desconectado</span>
+            </div>
+        </nav>
+
+        <section class="flex-grow flex flex-col items-center justify-center pt-24 pb-12 px-6">
+            
+            <div class="text-center mb-10 reveal-on-scroll">
+                <h1 class="text-4xl md:text-6xl font-black tracking-tight mb-2">
+                    Control <span class="text-transparent bg-clip-text bg-gradient-to-r from-aura-cyan to-aura-blue">Hidráulico</span>
+                </h1>
+                <p class="text-white/50 text-sm md:text-base">Hora del Sistema: <span id="system-time" class="text-aura-cyan font-mono">--:--:--</span></p>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-8 w-full max-w-5xl">
+
+                <div id="card-b1" class="reveal-on-scroll p-8 rounded-3xl bg-white/5 border border-white/10 transition-all duration-500 group relative overflow-hidden">
+                    <div class="absolute top-0 right-0 p-6 opacity-10">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="text-white"><path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z"></path></svg>
+                    </div>
+
+                    <div class="flex justify-between items-start mb-6">
+                        <div>
+                            <h2 class="text-2xl font-bold text-white mb-1">Cocina</h2>
+                            <p class="text-xs text-white/40 uppercase tracking-widest">Bomba Principal</p>
+                        </div>
+                        <div id="status-badge-b1" class="px-3 py-1 rounded-full bg-white/10 text-white/50 text-xs font-bold">OFF</div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4 mb-8">
+                        <button onclick="enviarMensaje('casa/bomba1/comando', 'ON')" class="py-4 rounded-xl bg-aura-cyan/10 border border-aura-cyan/30 text-aura-cyan font-bold hover:bg-aura-cyan hover:text-aura-black transition-all shadow-[0_0_15px_rgba(0,242,255,0.1)] hover:shadow-[0_0_25px_rgba(0,242,255,0.4)]">
+                            ENCENDER
+                        </button>
+                        <button onclick="enviarMensaje('casa/bomba1/comando', 'OFF')" class="py-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-500 font-bold hover:bg-red-500 hover:text-white transition-all">
+                            APAGAR
+                        </button>
+                    </div>
+
+                    <div class="mb-6">
+                        <div class="flex justify-between text-xs text-white/60 mb-2">
+                            <span>Temporizador Manual</span>
+                            <span id="val-timer-b1" class="text-aura-cyan">0 min</span>
+                        </div>
+                        <input type="range" min="0" max="60" value="0" step="1" id="range-b1" oninput="updateSliderVal(1, this.value)" onchange="setTimer(1, this.value)">
+                    </div>
+
+                    <div class="p-4 rounded-2xl bg-black/20 border border-white/5">
+                        <label class="block text-xs text-white/40 uppercase mb-2">Programar Horario (Turno 1)</label>
+                        <div class="flex gap-2">
+                            <input type="text" id="input-b1" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-aura-cyan outline-none transition-colors text-sm" placeholder="Ej: 08:00-08:15">
+                            <button onclick="programarHorario(1)" class="px-4 py-2 bg-white/10 rounded-lg hover:bg-aura-cyan hover:text-black transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                            </button>
+                        </div>
+                        <p id="info-b1" class="text-xs text-white/30 mt-2 text-right">--</p>
+                    </div>
+                </div>
+
+                <div id="card-b2" class="reveal-on-scroll p-8 rounded-3xl bg-white/5 border border-white/10 transition-all duration-500 group relative overflow-hidden">
+                     <div class="absolute top-0 right-0 p-6 opacity-10">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="text-white"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path></svg>
+                    </div>
+
+                    <div class="flex justify-between items-start mb-6">
+                        <div>
+                            <h2 class="text-2xl font-bold text-white mb-1">Riego</h2>
+                            <p class="text-xs text-white/40 uppercase tracking-widest">Bomba Patio</p>
+                        </div>
+                        <div id="status-badge-b2" class="px-3 py-1 rounded-full bg-white/10 text-white/50 text-xs font-bold">OFF</div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4 mb-8">
+                        <button onclick="enviarMensaje('casa/bomba2/comando', 'ON')" class="py-4 rounded-xl bg-aura-cyan/10 border border-aura-cyan/30 text-aura-cyan font-bold hover:bg-aura-cyan hover:text-aura-black transition-all shadow-[0_0_15px_rgba(0,242,255,0.1)] hover:shadow-[0_0_25px_rgba(0,242,255,0.4)]">
+                            ENCENDER
+                        </button>
+                        <button onclick="enviarMensaje('casa/bomba2/comando', 'OFF')" class="py-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-500 font-bold hover:bg-red-500 hover:text-white transition-all">
+                            APAGAR
+                        </button>
+                    </div>
+
+                    <div class="mb-6">
+                        <div class="flex justify-between text-xs text-white/60 mb-2">
+                            <span>Temporizador Manual</span>
+                            <span id="val-timer-b2" class="text-aura-cyan">0 min</span>
+                        </div>
+                        <input type="range" min="0" max="60" value="0" step="1" id="range-b2" oninput="updateSliderVal(2, this.value)" onchange="setTimer(2, this.value)">
+                    </div>
+
+                    <div class="p-4 rounded-2xl bg-black/20 border border-white/5">
+                        <label class="block text-xs text-white/40 uppercase mb-2">Programar Horario (Turno 1)</label>
+                        <div class="flex gap-2">
+                            <input type="text" id="input-b2" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-aura-cyan outline-none transition-colors text-sm" placeholder="Ej: 20:00-20:30">
+                            <button onclick="programarHorario(2)" class="px-4 py-2 bg-white/10 rounded-lg hover:bg-aura-cyan hover:text-black transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                            </button>
+                        </div>
+                        <p id="info-b2" class="text-xs text-white/30 mt-2 text-right">--</p>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <footer class="py-8 text-center border-t border-white/5">
+             <p class="text-white/30 text-xs">© 2026 Aura Control Systems. Conectado a HiveMQ Cloud.</p>
+        </footer>
+
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/tsparticles@2.11.0/tsparticles.bundle.min.js"></script>
+    <script>
+        // --- 1. CONFIGURACIÓN VISUAL (Partículas y Scroll) ---
+        tsParticles.load("tsparticles", {
+            particles: {
+                number: { value: 60, density: { enable: true, value_area: 800 } },
+                color: { value: "#00F2FF" }, // Cyan particles
+                shape: { type: "circle" },
+                opacity: { value: 0.2, random: true },
+                size: { value: 2, random: true },
+                links: { enable: true, distance: 150, color: "#00F2FF", opacity: 0.05, width: 1 },
+                move: { enable: true, speed: 0.5, direction: "none", random: false, straight: false, out_mode: "out", bounce: false }
+            },
+            interactivity: {
+                detectsOn: "window",
+                events: { onHover: { enable: true, mode: "grab" }, resize: true },
+                modes: { grab: { distance: 200, links: { opacity: 0.5, color: "#00F2FF" } } }
+            },
+            retina_detect: true
+        });
+
+        // Animaciones
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) entry.target.classList.add('reveal-visible');
+            });
+        });
+        document.querySelectorAll('.reveal-on-scroll').forEach((el) => observer.observe(el));
+
+        // --- 2. LÓGICA MQTT (Cerebro) ---
+        
+        // DATOS DE CONEXIÓN
+        const host = "7e2fd3d035dd4308b9d04e70e8989f24.s1.eu.hivemq.cloud";
+        const port = 8884; // WebSocket Secure
+        const clientId = "AuraWeb-" + Math.random().toString(16).substr(2, 8);
+        const username = "bombas";
+        const password = "Halcon2015";
+
+        const client = new Paho.MQTT.Client(host, port, clientId);
+
+        client.onConnectionLost = onConnectionLost;
+        client.onMessageArrived = onMessageArrived;
+
+        const options = {
+            useSSL: true, 
+            userName: username,
+            password: password,
+            onSuccess: onConnect,
+            onFailure: onFailure
+        };
+
+        client.connect(options);
+
+        // FUNCIONES DE INTERFAZ
+        function updateStatusUI(bomba, estado) {
+            const badge = document.getElementById(`status-badge-b${bomba}`);
+            const card = document.getElementById(`card-b${bomba}`);
+            
+            if (estado === "ON" || estado.includes("ENCENDIDA")) {
+                badge.innerText = "ONLINE";
+                badge.className = "px-3 py-1 rounded-full bg-aura-cyan text-aura-black text-xs font-bold shadow-[0_0_10px_#00F2FF]";
+                card.classList.add("card-active");
+            } else {
+                badge.innerText = "OFF";
+                badge.className = "px-3 py-1 rounded-full bg-white/10 text-white/50 text-xs font-bold";
+                card.classList.remove("card-active");
+            }
+        }
+
+        function updateSliderVal(bomba, val) {
+            document.getElementById(`val-timer-b${bomba}`).innerText = val > 0 ? val + " min" : "Manual";
+        }
+
+        // MQTT HANDLERS
+        function onConnect() {
+            console.log("Conectado");
+            const statusBadge = document.getElementById("connection-badge");
+            statusBadge.className = "px-3 py-1 rounded-full bg-aura-green/10 border border-aura-green/20 text-aura-green text-xs font-bold uppercase tracking-widest flex items-center gap-2";
+            document.getElementById("connection-text").innerText = "SISTEMA ONLINE";
+            document.getElementById("connection-dot").className = "w-2 h-2 rounded-full bg-aura-green animate-pulse";
+
+            // Suscripciones
+            client.subscribe("casa/bomba1/estado");
+            client.subscribe("casa/bomba2/estado");
+            client.subscribe("casa/bomba1/info1");
+            client.subscribe("casa/bomba2/info1");
+            client.subscribe("casa/sistema/hora");
+        }
+
+        function onFailure(msg) {
+            console.log("Fallo conexion: " + msg.errorMessage);
+        }
+
+        function onConnectionLost(responseObject) {
+            if (responseObject.errorCode !== 0) console.log("Perdida: " + responseObject.errorMessage);
+            document.getElementById("connection-text").innerText = "RECONECTANDO...";
+            document.getElementById("connection-dot").className = "w-2 h-2 rounded-full bg-red-500 animate-pulse";
+        }
+
+        function onMessageArrived(message) {
+            const topic = message.destinationName;
+            const payload = message.payloadString;
+
+            // Hora del Sistema
+            if (topic === "casa/sistema/hora") {
+                document.getElementById("system-time").innerText = payload;
+                return;
+            }
+
+            // Estados Bombas
+            if (topic === "casa/bomba1/estado") updateStatusUI(1, payload);
+            if (topic === "casa/bomba2/estado") updateStatusUI(2, payload);
+
+            // Infos Turnos
+            if (topic === "casa/bomba1/info1") document.getElementById("info-b1").innerText = "Guardado: " + payload;
+            if (topic === "casa/bomba2/info1") document.getElementById("info-b2").innerText = "Guardado: " + payload;
+        }
+
+        // ACCIONES DE USUARIO
+        function enviarMensaje(topic, mensaje) {
+            message = new Paho.MQTT.Message(mensaje);
+            message.destinationName = topic;
+            client.send(message);
+        }
+
+        function setTimer(bomba, minutos) {
+            const topic = `casa/bomba${bomba}/set_timer`;
+            enviarMensaje(topic, minutos.toString());
+        }
+
+        function programarHorario(bomba) {
+            const inputId = `input-b${bomba}`;
+            const valor = document.getElementById(inputId).value;
+            const topic = `casa/bomba${bomba}/turno1`;
+            
+            if(valor) {
+                enviarMensaje(topic, valor);
+                // Feedback visual rápido
+                document.getElementById(`info-b${bomba}`).innerText = "Enviando...";
+            }
+        }
+    </script>
+</body>
+<div id="lock-screen" class="fixed inset-0 z-[100] bg-aura-black flex flex-col items-center justify-center transition-opacity duration-500">
+        <div class="text-center p-8 rounded-3xl border border-aura-cyan/20 bg-white/5 backdrop-blur-md shadow-[0_0_50px_rgba(0,242,255,0.1)]">
+            <div class="mb-6 flex justify-center">
+                <div class="p-3 rounded-full bg-aura-cyan/10 animate-pulse">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-aura-cyan"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                </div>
+            </div>
+            <h2 class="text-2xl font-bold text-white mb-2 tracking-widest">ACCESO RESTRINGIDO</h2>
+            <p class="text-white/40 text-sm mb-6">Sistema Hidráulico Seguro</p>
+            
+            <input type="password" id="pass-input" placeholder="Ingrese Código..." 
+                   class="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white text-center outline-none focus:border-aura-cyan focus:shadow-[0_0_15px_rgba(0,242,255,0.2)] transition-all mb-4 text-lg tracking-widest">
+            
+            <button onclick="verificarPassword()" class="w-full py-3 bg-aura-cyan text-aura-black font-bold rounded-xl hover:bg-white transition-all shadow-lg shadow-aura-cyan/20">
+                DESBLOQUEAR
+            </button>
+            <p id="error-msg" class="text-red-500 text-xs mt-4 font-bold hidden animate-pulse">⚠️ CÓDIGO INCORRECTO</p>
+        </div>
+    </div>
+
+    <script>
+        // --- CONFIGURACIÓN DE TU CONTRASEÑA ---
+        const CLAVE_SECRETA = "papasalhorno1"; // <--- ¡CAMBIA ESTO POR TU CONTRASEÑA!
+
+        function verificarPassword() {
+            const input = document.getElementById('pass-input');
+            const lockScreen = document.getElementById('lock-screen');
+            const errorMsg = document.getElementById('error-msg');
+
+            if (input.value === CLAVE_SECRETA) {
+                // Contraseña correcta: Desvanecer pantalla
+                lockScreen.style.opacity = '0';
+                setTimeout(() => {
+                    lockScreen.style.display = 'none';
+                }, 500);
+                // Guardar en el navegador para no pedirla a cada rato (opcional)
+                localStorage.setItem('aura_session', 'autorizado');
+            } else {
+                // Incorrecta
+                errorMsg.classList.remove('hidden');
+                input.value = "";
+                input.focus();
+            }
+        }
+
+        // Permitir dar ENTER para entrar
+        document.getElementById("pass-input").addEventListener("keypress", function(event) {
+            if (event.key === "Enter") verificarPassword();
+        });
+
+        // Verificar si ya inició sesión antes (Autologin)
+        if(localStorage.getItem('aura_session') === 'autorizado') {
+             document.getElementById('lock-screen').style.display = 'none';
+        }
+    </script>
+</html>

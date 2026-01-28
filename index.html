@@ -37,11 +37,10 @@
         input[type="time"] { color-scheme: dark; }
         #tsparticles { position: fixed; inset: 0; z-index: -10; }
         
-        /* Efecto de carga */
         .loading-pulse { animation: pulse-border 2s infinite; }
         @keyframes pulse-border {
             0% { border-color: rgba(255,255,255,0.1); }
-            50% { border-color: rgba(0,242,255,0.5); }
+            50% { border-color: rgba(0,242,255,0.3); }
             100% { border-color: rgba(255,255,255,0.1); }
         }
     </style>
@@ -67,7 +66,13 @@
         </div>
         <div class="text-right">
             <p class="text-[10px] text-white/40 uppercase">Hora Sistema</p>
-            <p id="system-time" class="text-sm font-mono text-aura-cyan">Conectando...</p>
+            <div class="flex items-center justify-end gap-2">
+                <p id="system-time" class="text-sm font-mono text-aura-cyan">--:--:--</p>
+                <button onclick="syncTime()" class="text-[10px] font-bold bg-white/10 px-2 py-1 rounded hover:bg-aura-cyan hover:text-black transition-colors flex items-center gap-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21h5v-5"/></svg>
+                    SYNC
+                </button>
+            </div>
         </div>
     </nav>
 
@@ -127,7 +132,7 @@
                     <p id="info-b1-active" class="text-xs text-center mt-3 text-white/40 h-4">--</p>
                 </div>
 
-                <div class="mt-6">
+                 <div class="mt-6">
                     <div class="flex justify-between text-xs text-white/50 mb-2">
                         <span>Timer Manual</span>
                         <span id="val-timer-b1" class="text-aura-cyan font-bold">Desactivado</span>
@@ -217,29 +222,21 @@
         const CLAVE = "1234"; // <--- CAMBIA TU CLAVE AQUI
         let currentSubTabB1 = 1;
         let currentSubTabB2 = 1;
-        
-        // Almacenamiento local de los 3 turnos para cada bomba
-        const turnosData = {
-            1: [null, null, null],
-            2: [null, null, null]
-        };
+        const turnosData = { 1: [null, null, null], 2: [null, null, null] };
 
-        // 1. SEGURIDAD
+        // SEGURIDAD
         function verificarPassword() {
             if(document.getElementById('pass-input').value === CLAVE) {
                 document.getElementById('lock-screen').style.opacity = '0';
                 setTimeout(() => document.getElementById('lock-screen').style.display = 'none', 500);
-                localStorage.setItem('auth_aura_v2', 'ok');
-            } else {
-                document.getElementById('error-msg').classList.remove('hidden');
-            }
+                localStorage.setItem('aura_v3_auth', 'ok');
+            } else { document.getElementById('error-msg').classList.remove('hidden'); }
         }
-        if(localStorage.getItem('auth_aura_v2') === 'ok') document.getElementById('lock-screen').style.display = 'none';
+        if(localStorage.getItem('aura_v3_auth') === 'ok') document.getElementById('lock-screen').style.display = 'none';
 
-        // 2. PESTAÑAS PRINCIPALES
+        // PESTAÑAS PRINCIPALES
         function switchTab(tab) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-            // Reset styles
             document.getElementById('btn-juan').className = "flex-1 py-3 rounded-lg text-sm font-black tracking-wider transition-all text-white/50 hover:text-white";
             document.getElementById('btn-guille').className = "flex-1 py-3 rounded-lg text-sm font-black tracking-wider transition-all text-white/50 hover:text-white";
 
@@ -252,33 +249,28 @@
             }
         }
 
-        // 3. SUB-PESTAÑAS (T1, T2, T3)
+        // SUB-PESTAÑAS
         function setSubTab(bomba, turno) {
             const color = bomba === 1 ? 'aura-cyan' : 'aura-purple';
             const shadow = bomba === 1 ? 'rgba(0,242,255,0.5)' : 'rgba(168,85,247,0.5)';
             
-            // Resetear botones de esa bomba
             for(let i=1; i<=3; i++) {
                 const btn = document.getElementById(`b${bomba}-t${i}-btn`);
                 btn.className = "w-8 h-8 rounded-full bg-white/10 text-white font-bold text-xs transition-all hover:bg-white/20";
                 btn.style.boxShadow = "none";
                 btn.style.color = "white";
             }
-            // Activar nuevo botón
             const activeBtn = document.getElementById(`b${bomba}-t${turno}-btn`);
             activeBtn.className = `w-8 h-8 rounded-full bg-${color} text-black font-bold text-xs transition-all`;
             activeBtn.style.boxShadow = `0 0 10px ${shadow}`;
 
-            // Actualizar variable global para saber dónde guardar
             if(bomba === 1) currentSubTabB1 = turno;
             else currentSubTabB2 = turno;
-
-            // Rellenar inputs con la info guardada de ese turno
             actualizarInputs(bomba, turno);
         }
 
         function actualizarInputs(bomba, turnoIdx) {
-            const data = turnosData[bomba][turnoIdx-1]; // Array es indice 0
+            const data = turnosData[bomba][turnoIdx-1];
             const infoLbl = document.getElementById(`info-b${bomba}-active`);
             const color = bomba === 1 ? '#00F2FF' : '#a855f7';
 
@@ -296,7 +288,7 @@
             }
         }
 
-        // 4. RELOJ CANVAS (DIBUJO)
+        // RELOJ CANVAS
         function drawClock(bomba) {
             const canvas = document.getElementById(`clock-b${bomba}`);
             const ctx = canvas.getContext('2d');
@@ -306,15 +298,12 @@
             const color = bomba === 1 ? '#00F2FF' : '#a855f7';
 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            // Esfera base
             ctx.beginPath();
             ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
             ctx.strokeStyle = 'rgba(255,255,255,0.05)';
             ctx.lineWidth = 12;
             ctx.stroke();
 
-            // Texto horas
             ctx.font = "10px monospace";
             ctx.fillStyle = "rgba(255,255,255,0.3)";
             ctx.textAlign = "center";
@@ -323,16 +312,13 @@
             ctx.fillText("06h", centerX + radius + 20, centerY + 3);
             ctx.fillText("18h", centerX - radius - 20, centerY + 3);
 
-            // Dibujar Turnos Activos
             const turnos = turnosData[bomba];
             turnos.forEach(t => {
                 if(t && t.includes("-")) {
                     const [start, end] = t.split("-");
                     const startDeg = timeToDegrees(start);
                     const endDeg = timeToDegrees(end);
-
                     ctx.beginPath();
-                    // Restamos 90 grados para que 0 grados sea arriba (12 en punto)
                     ctx.arc(centerX, centerY, radius, (startDeg - 90) * Math.PI/180, (endDeg - 90) * Math.PI/180);
                     ctx.strokeStyle = color;
                     ctx.lineWidth = 12;
@@ -347,14 +333,29 @@
 
         function timeToDegrees(timeStr) {
             const [h, m] = timeStr.split(":").map(Number);
-            const totalMinutes = h * 60 + m;
-            return (totalMinutes / 1440) * 360; // 1440 mins en 24h
+            return ((h * 60 + m) / 1440) * 360;
         }
 
-        // ================= MQTT (CONEXIÓN) =================
+        // --- SINCRONIZAR HORA (NUEVO) ---
+        function syncTime() {
+            const now = new Date();
+            // Formato YYYY-MM-DD HH:MM:SS
+            const y = now.getFullYear();
+            const m = now.getMonth() + 1;
+            const d = now.getDate();
+            const hh = now.getHours();
+            const mm = now.getMinutes();
+            const ss = now.getSeconds();
+            const strTime = `${y}-${m}-${d} ${hh}:${mm}:${ss}`;
+            
+            enviar("casa/sistema/set_hora", strTime);
+            document.getElementById("system-time").innerText = "Sincronizando...";
+        }
+
+        // MQTT
         const host = "7e2fd3d035dd4308b9d04e70e8989f24.s1.eu.hivemq.cloud";
         const port = 8884;
-        const clientId = "AuraWebFinal-" + Math.random().toString(16).substr(2, 8);
+        const clientId = "AuraFinal-" + Math.random().toString(16).substr(2, 8);
         const client = new Paho.MQTT.Client(host, port, clientId);
 
         client.onConnectionLost = (resp) => {
@@ -367,123 +368,82 @@
         client.onMessageArrived = (msg) => {
             const topic = msg.destinationName;
             const payload = msg.payloadString;
-            console.log("MSG:", topic, payload); // Debug en consola
 
-            // HORA
             if (topic === "casa/sistema/hora") {
                 document.getElementById("system-time").innerText = payload;
                 document.getElementById("system-time").className = "text-sm font-mono text-aura-cyan";
             }
 
-            // DETECTAR BOMBA 1 O 2
             let bIdx = 0;
             if (topic.includes("bomba1")) bIdx = 1;
             if (topic.includes("bomba2")) bIdx = 2;
 
             if (bIdx > 0) {
-                // ESTADO (ON/OFF)
                 if (topic.includes("estado")) {
-                    const isOn = (payload === "ON" || payload.includes("ENCENDIDA")); // Acepta ambas respuestas
+                    const isOn = (payload === "ON" || payload.includes("ENCENDIDA"));
                     document.getElementById(`switch-b${bIdx}`).checked = isOn;
                     document.getElementById(`txt-status-b${bIdx}`).innerText = isOn ? "ON" : "OFF";
                     document.getElementById(`txt-status-b${bIdx}`).style.color = isOn ? (bIdx===1?'#00F2FF':'#a855f7') : 'white';
-                    
-                    // Actualizar switch visualmente
                     if(isOn) document.querySelector(`#switch-b${bIdx} + label`).style.backgroundColor = (bIdx===1?'#00F2FF':'#a855f7');
                     else document.querySelector(`#switch-b${bIdx} + label`).style.backgroundColor = '#374151';
                 }
-
-                // INFOS DE TURNOS (info1, info2, info3)
                 if (topic.includes("info")) {
-                    // Extraer numero de turno del topic (el ultimo caracter)
-                    const lastChar = topic.slice(-1);
-                    const turnoNum = parseInt(lastChar); 
-
-                    if (!isNaN(turnoNum) && turnoNum >= 1 && turnoNum <= 3) {
-                        if (payload === "DESACTIVADO" || payload === "OFF") {
-                            turnosData[bIdx][turnoNum-1] = null;
-                        } else {
-                            // Convertir formato "08:00 a 08:30" si viene así del ESP32
-                            let formatted = payload.replace(" a ", "-"); 
-                            turnosData[bIdx][turnoNum-1] = formatted;
-                        }
+                    const turnoNum = parseInt(topic.slice(-1)); 
+                    if (!isNaN(turnoNum)) {
+                        if (payload === "DESACTIVADO" || payload === "OFF") turnosData[bIdx][turnoNum-1] = null;
+                        else turnosData[bIdx][turnoNum-1] = payload.replace(" a ", "-");
                         
-                        // Redibujar reloj
                         drawClock(bIdx);
-                        // Si el usuario está viendo este turno, actualizar inputs
                         const activeTab = (bIdx === 1) ? currentSubTabB1 : currentSubTabB2;
-                        if(activeTab === turnoNum) {
-                            actualizarInputs(bIdx, turnoNum);
-                        }
+                        if(activeTab === turnoNum) actualizarInputs(bIdx, turnoNum);
                     }
                 }
             }
         };
 
-        // CONEXIÓN INICIAL
         const options = {
             useSSL: true, userName: "bombas", password: "Halcon2015",
             onSuccess: () => {
-                console.log("CONECTADO A HIVEMQ");
                 document.getElementById("conn-dot").className = "w-2 h-2 rounded-full bg-aura-cyan shadow-[0_0_10px_#00F2FF]";
-                document.getElementById("system-time").innerText = "Esperando hora...";
-                
-                // SUSCRIPCIÓN EXPLÍCITA A TODO
                 client.subscribe("casa/sistema/hora");
-                
                 client.subscribe("casa/bomba1/estado");
-                client.subscribe("casa/bomba1/info1");
-                client.subscribe("casa/bomba1/info2");
-                client.subscribe("casa/bomba1/info3");
-
                 client.subscribe("casa/bomba2/estado");
-                client.subscribe("casa/bomba2/info1");
-                client.subscribe("casa/bomba2/info2");
-                client.subscribe("casa/bomba2/info3");
-            },
-            onFailure: (err) => {
-                console.log("FALLO:", err);
-                document.getElementById("system-time").innerText = "Error WiFi";
+                for(let i=1; i<=3; i++) {
+                    client.subscribe(`casa/bomba1/info${i}`);
+                    client.subscribe(`casa/bomba2/info${i}`);
+                }
             }
         };
 
         client.connect(options);
 
-        // FUNCIONES DE ENVÍO
+        // ENVIO
         function enviar(topic, msg) {
             message = new Paho.MQTT.Message(msg);
             message.destinationName = topic;
             client.send(message);
-            console.log("Enviado:", topic, msg);
         }
 
         function toggleBomba(id) {
             const check = document.getElementById(`switch-b${id}`);
             const cmd = check.checked ? "ON" : "OFF";
             enviar(`casa/bomba${id}/comando`, cmd);
-            // Cambio visual inmediato para sensación de rapidez (optimista)
-            document.getElementById(`txt-status-b${id}`).innerText = "Espera...";
         }
 
         function programarReloj(id) {
-            // Obtener el turno actual seleccionado (1, 2 o 3)
             const tIdx = (id === 1) ? currentSubTabB1 : currentSubTabB2;
             const start = document.getElementById(`start-b${id}`).value;
             const end = document.getElementById(`end-b${id}`).value;
-            
             if(start && end) {
-                // Enviar formato HH:MM-HH:MM
                 enviar(`casa/bomba${id}/turno${tIdx}`, `${start}-${end}`);
                 document.getElementById(`info-b${id}-active`).innerText = "Enviando...";
-            } else {
-                alert("Por favor selecciona Hora Inicio y Fin");
-            }
+            } else { alert("Selecciona horas"); }
         }
 
         function borrarTurno(id) {
             const tIdx = (id === 1) ? currentSubTabB1 : currentSubTabB2;
             enviar(`casa/bomba${id}/turno${tIdx}`, "OFF");
-             document.getElementById(`info-b${id}-active`).innerText = "Borrando...";
+            document.getElementById(`info-b${id}-active`).innerText = "Borrando...";
         }
 
         function setTimer(id, val) {
@@ -491,11 +451,9 @@
         }
 
         function updateSlider(id, val) {
-            const label = document.getElementById(`val-timer-b${id}`);
-            label.innerText = val > 0 ? val + " min" : "Desactivado";
+            document.getElementById(`val-timer-b${id}`).innerText = val > 0 ? val + " min" : "Desactivado";
         }
 
-        // Inicializar relojes vacíos
         drawClock(1);
         drawClock(2);
     </script>

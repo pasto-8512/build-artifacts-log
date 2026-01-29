@@ -3,51 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
-    <title>Aura Control - Juan & Guille</title>
-    
+    <title>Aura Control - Full Logs</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
             theme: {
-                extend: {
-                    colors: {
-                        'aura-black': '#050505',
-                        'aura-cyan': '#00F2FF',
-                        'aura-purple': '#a855f7',
-                        'aura-panel': '#111111',
-                    }
-                }
+                extend: { colors: { 'aura-black': '#050505', 'aura-cyan': '#00F2FF', 'aura-purple': '#a855f7', 'aura-panel': '#111111', 'aura-log': '#0a0a0a' } }
             }
         }
     </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
-
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #050505; color: white; overflow-x: hidden; }
-        
         .tab-content { display: none; opacity: 0; transition: opacity 0.3s ease; }
         .tab-content.active { display: block; opacity: 1; }
-
-        /* SWITCH PERSONALIZADO */
         .toggle-checkbox:checked { right: 0; border-color: #00F2FF; }
         .toggle-checkbox:checked + .toggle-label { background-color: #00F2FF; }
         .toggle-checkbox { right: 50%; }
         .toggle-label { width: 3.5rem; height: 1.75rem; }
-
         input[type="time"] { color-scheme: dark; }
         #tsparticles { position: fixed; inset: 0; z-index: -10; }
-        
-        .loading-pulse { animation: pulse-border 2s infinite; }
-        @keyframes pulse-border {
-            0% { border-color: rgba(255,255,255,0.1); }
-            50% { border-color: rgba(0,242,255,0.3); }
-            100% { border-color: rgba(255,255,255,0.1); }
-        }
+        /* Estilo Log */
+        .log-entry { font-family: 'Courier New', monospace; font-size: 12px; border-bottom: 1px solid #222; padding: 4px 0; animation: fadein 0.3s; }
+        .log-time { color: #666; margin-right: 8px; }
+        @keyframes fadein { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 
 <body class="bg-aura-black text-white selection:bg-aura-cyan/30">
-
     <div id="tsparticles"></div>
 
     <div id="lock-screen" class="fixed inset-0 z-[100] bg-black/95 flex flex-col items-center justify-center">
@@ -62,32 +45,29 @@
     <nav class="fixed top-0 w-full z-50 bg-black/80 backdrop-blur-md border-b border-white/10 px-4 py-3 flex justify-between items-center">
         <div class="flex items-center gap-2">
             <div id="conn-dot" class="w-2 h-2 rounded-full bg-red-500"></div>
-            <span class="font-bold tracking-widest text-sm">AURA <span class="text-aura-cyan">CONTROL</span></span>
+            <span class="font-bold tracking-widest text-sm">AURA <span class="text-aura-cyan">V4</span></span>
         </div>
         <div class="text-right">
             <p class="text-[10px] text-white/40 uppercase">Hora Sistema</p>
             <div class="flex items-center justify-end gap-2">
                 <p id="system-time" class="text-sm font-mono text-aura-cyan">--:--:--</p>
-                <button onclick="syncTime()" class="text-[10px] font-bold bg-white/10 px-2 py-1 rounded hover:bg-aura-cyan hover:text-black transition-colors flex items-center gap-1">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21h5v-5"/></svg>
-                    SYNC
-                </button>
+                <button onclick="syncTime()" class="text-[10px] font-bold bg-white/10 px-2 py-1 rounded hover:bg-aura-cyan hover:text-black transition-colors flex items-center gap-1">SYNC</button>
             </div>
         </div>
     </nav>
 
     <div class="fixed top-16 w-full z-40 px-4">
         <div class="flex bg-aura-panel rounded-xl p-1 border border-white/10">
-            <button onclick="switchTab('juan')" id="btn-juan" class="flex-1 py-3 rounded-lg text-sm font-black tracking-wider transition-all bg-aura-cyan text-black shadow-[0_0_20px_rgba(0,242,255,0.2)]">JUAN (B1)</button>
-            <button onclick="switchTab('guille')" id="btn-guille" class="flex-1 py-3 rounded-lg text-sm font-black tracking-wider transition-all text-white/50 hover:text-white">GUILLE (B2)</button>
+            <button onclick="switchTab('juan')" id="btn-juan" class="flex-1 py-3 rounded-lg text-xs font-black tracking-wider transition-all bg-aura-cyan text-black">JUAN</button>
+            <button onclick="switchTab('guille')" id="btn-guille" class="flex-1 py-3 rounded-lg text-xs font-black tracking-wider transition-all text-white/50 hover:text-white">GUILLE</button>
+            <button onclick="switchTab('logs')" id="btn-logs" class="flex-1 py-3 rounded-lg text-xs font-black tracking-wider transition-all text-white/50 hover:text-white">LOGS</button>
         </div>
     </div>
 
     <main class="pt-36 pb-10 px-4 min-h-screen flex flex-col items-center w-full max-w-lg mx-auto">
         
         <div id="tab-juan" class="tab-content active w-full">
-            <div class="p-6 rounded-3xl bg-aura-panel border border-white/10 relative loading-pulse">
-                
+            <div class="p-6 rounded-3xl bg-aura-panel border border-white/10 relative">
                 <div class="flex justify-center mb-6 relative">
                     <canvas id="clock-b1" width="220" height="220"></canvas>
                     <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
@@ -95,48 +75,34 @@
                         <span id="txt-status-b1" class="text-xl font-bold text-white">OFF</span>
                     </div>
                 </div>
-
                 <div class="flex justify-between items-center mb-6 bg-white/5 p-4 rounded-xl border border-white/5">
                     <span class="font-bold text-lg text-white">Bomba Cocina</span>
                     <div class="relative inline-block w-14 align-middle select-none">
-                        <input type="checkbox" id="switch-b1" class="toggle-checkbox absolute block w-7 h-7 rounded-full bg-white border-4 border-aura-panel appearance-none cursor-pointer transition-all duration-300" style="top: 0;" onchange="toggleBomba(1)">
+                        <input type="checkbox" id="switch-b1" class="toggle-checkbox absolute block w-7 h-7 rounded-full bg-white border-4 border-aura-panel appearance-none cursor-pointer" onchange="toggleBomba(1)">
                         <label for="switch-b1" class="toggle-label block overflow-hidden h-7 rounded-full bg-gray-700 cursor-pointer transition-colors duration-300"></label>
                     </div>
                 </div>
-
                 <div class="bg-black/30 rounded-2xl p-5 border border-white/5 mb-4">
                     <div class="flex justify-between items-center mb-4">
-                        <span class="text-xs text-aura-cyan uppercase font-bold">Configurar Turnos</span>
+                        <span class="text-xs text-aura-cyan uppercase font-bold">Turnos</span>
                         <div class="flex gap-2">
-                            <button onclick="setSubTab(1, 1)" id="b1-t1-btn" class="subtab-btn w-8 h-8 rounded-full bg-aura-cyan text-black font-bold text-xs transition-all shadow-[0_0_10px_rgba(0,242,255,0.5)]">1</button>
-                            <button onclick="setSubTab(1, 2)" id="b1-t2-btn" class="subtab-btn w-8 h-8 rounded-full bg-white/10 text-white font-bold text-xs transition-all">2</button>
-                            <button onclick="setSubTab(1, 3)" id="b1-t3-btn" class="subtab-btn w-8 h-8 rounded-full bg-white/10 text-white font-bold text-xs transition-all">3</button>
+                            <button onclick="setSubTab(1, 1)" id="b1-t1-btn" class="w-8 h-8 rounded-full bg-aura-cyan text-black font-bold text-xs shadow-[0_0_10px_rgba(0,242,255,0.5)]">1</button>
+                            <button onclick="setSubTab(1, 2)" id="b1-t2-btn" class="w-8 h-8 rounded-full bg-white/10 text-white font-bold text-xs">2</button>
+                            <button onclick="setSubTab(1, 3)" id="b1-t3-btn" class="w-8 h-8 rounded-full bg-white/10 text-white font-bold text-xs">3</button>
                         </div>
                     </div>
-
                     <div class="flex gap-3 mb-3">
-                        <div class="w-1/2">
-                            <label class="text-[10px] text-white/40 block mb-1 ml-1">INICIO</label>
-                            <input type="time" id="start-b1" class="w-full bg-white/5 border border-white/10 rounded-lg py-2 px-1 text-center text-lg outline-none focus:border-aura-cyan">
-                        </div>
-                        <div class="w-1/2">
-                            <label class="text-[10px] text-white/40 block mb-1 ml-1">FIN</label>
-                            <input type="time" id="end-b1" class="w-full bg-white/5 border border-white/10 rounded-lg py-2 px-1 text-center text-lg outline-none focus:border-aura-cyan">
-                        </div>
+                        <input type="time" id="start-b1" class="w-1/2 bg-white/5 border border-white/10 rounded-lg py-2 px-1 text-center outline-none focus:border-aura-cyan">
+                        <input type="time" id="end-b1" class="w-1/2 bg-white/5 border border-white/10 rounded-lg py-2 px-1 text-center outline-none focus:border-aura-cyan">
                     </div>
-
                     <div class="flex gap-2">
-                        <button onclick="borrarTurno(1)" class="flex-1 py-2 bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white rounded-lg text-xs font-bold transition-colors">BORRAR</button>
-                        <button onclick="programarReloj(1)" class="flex-[2] py-2 bg-white/10 hover:bg-aura-cyan hover:text-black rounded-lg text-xs font-bold transition-colors">GUARDAR</button>
+                        <button onclick="borrarTurno(1)" class="flex-1 py-2 bg-red-500/10 text-red-500 rounded-lg text-xs font-bold">BORRAR</button>
+                        <button onclick="programarReloj(1)" class="flex-[2] py-2 bg-white/10 hover:bg-aura-cyan hover:text-black rounded-lg text-xs font-bold">GUARDAR</button>
                     </div>
                     <p id="info-b1-active" class="text-xs text-center mt-3 text-white/40 h-4">--</p>
                 </div>
-
                  <div class="mt-6">
-                    <div class="flex justify-between text-xs text-white/50 mb-2">
-                        <span>Timer Manual</span>
-                        <span id="val-timer-b1" class="text-aura-cyan font-bold">Desactivado</span>
-                    </div>
+                    <div class="flex justify-between text-xs text-white/50 mb-2"><span>Timer</span><span id="val-timer-b1" class="text-aura-cyan font-bold">Off</span></div>
                     <input type="range" min="0" max="60" value="0" class="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-aura-cyan" oninput="updateSlider(1, this.value)" onchange="setTimer(1, this.value)">
                 </div>
             </div>
@@ -144,7 +110,6 @@
 
         <div id="tab-guille" class="tab-content w-full">
             <div class="p-6 rounded-3xl bg-aura-panel border border-white/10 relative">
-                
                 <div class="flex justify-center mb-6 relative">
                     <canvas id="clock-b2" width="220" height="220"></canvas>
                     <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
@@ -152,49 +117,47 @@
                         <span id="txt-status-b2" class="text-xl font-bold text-white">OFF</span>
                     </div>
                 </div>
-
                 <div class="flex justify-between items-center mb-6 bg-white/5 p-4 rounded-xl border border-white/5">
                     <span class="font-bold text-lg text-white">Bomba Riego</span>
                     <div class="relative inline-block w-14 align-middle select-none">
-                        <input type="checkbox" id="switch-b2" class="toggle-checkbox absolute block w-7 h-7 rounded-full bg-white border-4 border-aura-panel appearance-none cursor-pointer transition-all duration-300" style="top: 0;" onchange="toggleBomba(2)">
+                        <input type="checkbox" id="switch-b2" class="toggle-checkbox absolute block w-7 h-7 rounded-full bg-white border-4 border-aura-panel appearance-none cursor-pointer" onchange="toggleBomba(2)">
                         <label for="switch-b2" class="toggle-label block overflow-hidden h-7 rounded-full bg-gray-700 cursor-pointer transition-colors duration-300"></label>
                     </div>
                 </div>
-
                 <div class="bg-black/30 rounded-2xl p-5 border border-white/5 mb-4">
                     <div class="flex justify-between items-center mb-4">
-                        <span class="text-xs text-aura-purple uppercase font-bold">Configurar Turnos</span>
+                        <span class="text-xs text-aura-purple uppercase font-bold">Turnos</span>
                         <div class="flex gap-2">
-                            <button onclick="setSubTab(2, 1)" id="b2-t1-btn" class="subtab-btn w-8 h-8 rounded-full bg-aura-purple text-black font-bold text-xs transition-all shadow-[0_0_10px_rgba(168,85,247,0.5)]">1</button>
-                            <button onclick="setSubTab(2, 2)" id="b2-t2-btn" class="subtab-btn w-8 h-8 rounded-full bg-white/10 text-white font-bold text-xs transition-all">2</button>
-                            <button onclick="setSubTab(2, 3)" id="b2-t3-btn" class="subtab-btn w-8 h-8 rounded-full bg-white/10 text-white font-bold text-xs transition-all">3</button>
+                            <button onclick="setSubTab(2, 1)" id="b2-t1-btn" class="w-8 h-8 rounded-full bg-aura-purple text-black font-bold text-xs shadow-[0_0_10px_rgba(168,85,247,0.5)]">1</button>
+                            <button onclick="setSubTab(2, 2)" id="b2-t2-btn" class="w-8 h-8 rounded-full bg-white/10 text-white font-bold text-xs">2</button>
+                            <button onclick="setSubTab(2, 3)" id="b2-t3-btn" class="w-8 h-8 rounded-full bg-white/10 text-white font-bold text-xs">3</button>
                         </div>
                     </div>
-
                     <div class="flex gap-3 mb-3">
-                        <div class="w-1/2">
-                            <label class="text-[10px] text-white/40 block mb-1 ml-1">INICIO</label>
-                            <input type="time" id="start-b2" class="w-full bg-white/5 border border-white/10 rounded-lg py-2 px-1 text-center text-lg outline-none focus:border-aura-purple">
-                        </div>
-                        <div class="w-1/2">
-                            <label class="text-[10px] text-white/40 block mb-1 ml-1">FIN</label>
-                            <input type="time" id="end-b2" class="w-full bg-white/5 border border-white/10 rounded-lg py-2 px-1 text-center text-lg outline-none focus:border-aura-purple">
-                        </div>
+                        <input type="time" id="start-b2" class="w-1/2 bg-white/5 border border-white/10 rounded-lg py-2 px-1 text-center outline-none focus:border-aura-purple">
+                        <input type="time" id="end-b2" class="w-1/2 bg-white/5 border border-white/10 rounded-lg py-2 px-1 text-center outline-none focus:border-aura-purple">
                     </div>
-
                     <div class="flex gap-2">
-                        <button onclick="borrarTurno(2)" class="flex-1 py-2 bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white rounded-lg text-xs font-bold transition-colors">BORRAR</button>
-                        <button onclick="programarReloj(2)" class="flex-[2] py-2 bg-white/10 hover:bg-aura-purple hover:text-black rounded-lg text-xs font-bold transition-colors">GUARDAR</button>
+                        <button onclick="borrarTurno(2)" class="flex-1 py-2 bg-red-500/10 text-red-500 rounded-lg text-xs font-bold">BORRAR</button>
+                        <button onclick="programarReloj(2)" class="flex-[2] py-2 bg-white/10 hover:bg-aura-purple hover:text-black rounded-lg text-xs font-bold">GUARDAR</button>
                     </div>
                     <p id="info-b2-active" class="text-xs text-center mt-3 text-white/40 h-4">--</p>
                 </div>
-                
                  <div class="mt-6">
-                    <div class="flex justify-between text-xs text-white/50 mb-2">
-                        <span>Timer Manual</span>
-                        <span id="val-timer-b2" class="text-aura-purple font-bold">Desactivado</span>
-                    </div>
+                    <div class="flex justify-between text-xs text-white/50 mb-2"><span>Timer</span><span id="val-timer-b2" class="text-aura-purple font-bold">Off</span></div>
                     <input type="range" min="0" max="60" value="0" class="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-aura-purple" oninput="updateSlider(2, this.value)" onchange="setTimer(2, this.value)">
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-logs" class="tab-content w-full">
+            <div class="p-6 rounded-3xl bg-aura-panel border border-white/10 relative h-[60vh] flex flex-col">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold text-white">Registro Eventos</h2>
+                    <button onclick="clearLogs()" class="text-xs text-white/40 hover:text-white">LIMPIAR</button>
+                </div>
+                <div id="log-container" class="flex-1 bg-aura-log border border-white/5 rounded-xl p-4 overflow-y-auto font-mono text-xs text-green-400 space-y-2 shadow-inner">
+                    <div class="text-white/30 italic">Esperando eventos...</div>
                 </div>
             </div>
         </div>
@@ -203,259 +166,169 @@
 
     <script src="https://cdn.jsdelivr.net/npm/tsparticles@2.11.0/tsparticles.bundle.min.js"></script>
     <script>
-        // CONFIGURACIÓN PARTICULAS
-        tsParticles.load("tsparticles", {
-            particles: {
-                number: { value: 40, density: { enable: true, value_area: 800 } },
-                color: { value: ["#00F2FF", "#a855f7"] },
-                shape: { type: "circle" },
-                opacity: { value: 0.3, random: true },
-                size: { value: 2 },
-                move: { enable: true, speed: 0.3, direction: "none", out_mode: "out" },
-                links: { enable: true, distance: 150, color: "#ffffff", opacity: 0.05, width: 1 }
-            },
-            interactivity: { detectsOn: "canvas", events: { resize: true } },
-            retina_detect: true
-        });
+        tsParticles.load("tsparticles", { particles: { number: { value: 30 }, color: { value: ["#00F2FF", "#a855f7"] }, opacity: { value: 0.2 }, size: { value: 2 }, move: { enable: true, speed: 0.3 }, links: { enable: true, color: "#ffffff", opacity: 0.05 } } });
 
-        // ================= LÓGICA DEL SISTEMA =================
-        const CLAVE = "1234"; // <--- CAMBIA TU CLAVE AQUI
-        let currentSubTabB1 = 1;
-        let currentSubTabB2 = 1;
+        const CLAVE = "1234"; 
+        let currentSubTabB1 = 1, currentSubTabB2 = 1;
         const turnosData = { 1: [null, null, null], 2: [null, null, null] };
 
-        // SEGURIDAD
         function verificarPassword() {
             if(document.getElementById('pass-input').value === CLAVE) {
                 document.getElementById('lock-screen').style.opacity = '0';
                 setTimeout(() => document.getElementById('lock-screen').style.display = 'none', 500);
-                localStorage.setItem('aura_v3_auth', 'ok');
+                localStorage.setItem('aura_v4_auth', 'ok');
             } else { document.getElementById('error-msg').classList.remove('hidden'); }
         }
-        if(localStorage.getItem('aura_v3_auth') === 'ok') document.getElementById('lock-screen').style.display = 'none';
+        if(localStorage.getItem('aura_v4_auth') === 'ok') document.getElementById('lock-screen').style.display = 'none';
 
-        // PESTAÑAS PRINCIPALES
         function switchTab(tab) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-            document.getElementById('btn-juan').className = "flex-1 py-3 rounded-lg text-sm font-black tracking-wider transition-all text-white/50 hover:text-white";
-            document.getElementById('btn-guille').className = "flex-1 py-3 rounded-lg text-sm font-black tracking-wider transition-all text-white/50 hover:text-white";
-
+            ['juan','guille','logs'].forEach(t => {
+                document.getElementById('btn-'+t).className = "flex-1 py-3 rounded-lg text-xs font-black tracking-wider transition-all text-white/50 hover:text-white";
+            });
             document.getElementById('tab-' + tab).classList.add('active');
             
-            if(tab === 'juan') {
-                document.getElementById('btn-juan').className = "flex-1 py-3 rounded-lg text-sm font-black tracking-wider transition-all bg-aura-cyan text-black shadow-[0_0_20px_rgba(0,242,255,0.3)]";
-            } else {
-                document.getElementById('btn-guille').className = "flex-1 py-3 rounded-lg text-sm font-black tracking-wider transition-all bg-aura-purple text-black shadow-[0_0_20px_rgba(168,85,247,0.3)]";
-            }
+            const styles = {
+                'juan': 'bg-aura-cyan text-black shadow-[0_0_20px_rgba(0,242,255,0.3)]',
+                'guille': 'bg-aura-purple text-black shadow-[0_0_20px_rgba(168,85,247,0.3)]',
+                'logs': 'bg-white text-black shadow-[0_0_20px_rgba(255,255,255,0.3)]'
+            };
+            document.getElementById('btn-'+tab).className = "flex-1 py-3 rounded-lg text-xs font-black tracking-wider transition-all " + styles[tab];
         }
 
-        // SUB-PESTAÑAS
+        // Subtabs y Inputs igual que antes...
         function setSubTab(bomba, turno) {
             const color = bomba === 1 ? 'aura-cyan' : 'aura-purple';
-            const shadow = bomba === 1 ? 'rgba(0,242,255,0.5)' : 'rgba(168,85,247,0.5)';
-            
             for(let i=1; i<=3; i++) {
                 const btn = document.getElementById(`b${bomba}-t${i}-btn`);
-                btn.className = "w-8 h-8 rounded-full bg-white/10 text-white font-bold text-xs transition-all hover:bg-white/20";
+                btn.className = "w-8 h-8 rounded-full bg-white/10 text-white font-bold text-xs";
                 btn.style.boxShadow = "none";
-                btn.style.color = "white";
             }
             const activeBtn = document.getElementById(`b${bomba}-t${turno}-btn`);
-            activeBtn.className = `w-8 h-8 rounded-full bg-${color} text-black font-bold text-xs transition-all`;
-            activeBtn.style.boxShadow = `0 0 10px ${shadow}`;
-
-            if(bomba === 1) currentSubTabB1 = turno;
-            else currentSubTabB2 = turno;
+            activeBtn.className = `w-8 h-8 rounded-full bg-${color} text-black font-bold text-xs`;
+            activeBtn.style.boxShadow = `0 0 10px ${color==='aura-cyan'?'rgba(0,242,255,0.5)':'rgba(168,85,247,0.5)'}`;
+            if(bomba === 1) currentSubTabB1 = turno; else currentSubTabB2 = turno;
             actualizarInputs(bomba, turno);
         }
 
         function actualizarInputs(bomba, turnoIdx) {
             const data = turnosData[bomba][turnoIdx-1];
             const infoLbl = document.getElementById(`info-b${bomba}-active`);
-            const color = bomba === 1 ? '#00F2FF' : '#a855f7';
-
             if(data && data.includes("-")) {
                 const parts = data.split("-");
                 document.getElementById(`start-b${bomba}`).value = parts[0];
                 document.getElementById(`end-b${bomba}`).value = parts[1];
-                infoLbl.innerText = `Turno ${turnoIdx}: ${data}`;
-                infoLbl.style.color = color;
+                infoLbl.innerText = `T${turnoIdx}: ${data}`;
             } else {
                 document.getElementById(`start-b${bomba}`).value = "";
                 document.getElementById(`end-b${bomba}`).value = "";
-                infoLbl.innerText = "Sin programar";
-                infoLbl.style.color = "gray";
+                infoLbl.innerText = "Vacío";
             }
         }
 
-        // RELOJ CANVAS
-        function drawClock(bomba) {
-            const canvas = document.getElementById(`clock-b${bomba}`);
-            const ctx = canvas.getContext('2d');
-            const centerX = canvas.width / 2;
-            const centerY = canvas.height / 2;
-            const radius = 90;
-            const color = bomba === 1 ? '#00F2FF' : '#a855f7';
-
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.beginPath();
-            ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
-            ctx.strokeStyle = 'rgba(255,255,255,0.05)';
-            ctx.lineWidth = 12;
-            ctx.stroke();
-
-            ctx.font = "10px monospace";
-            ctx.fillStyle = "rgba(255,255,255,0.3)";
-            ctx.textAlign = "center";
-            ctx.fillText("00h", centerX, centerY - radius - 12);
-            ctx.fillText("12h", centerX, centerY + radius + 20);
-            ctx.fillText("06h", centerX + radius + 20, centerY + 3);
-            ctx.fillText("18h", centerX - radius - 20, centerY + 3);
-
-            const turnos = turnosData[bomba];
-            turnos.forEach(t => {
-                if(t && t.includes("-")) {
-                    const [start, end] = t.split("-");
-                    const startDeg = timeToDegrees(start);
-                    const endDeg = timeToDegrees(end);
-                    ctx.beginPath();
-                    ctx.arc(centerX, centerY, radius, (startDeg - 90) * Math.PI/180, (endDeg - 90) * Math.PI/180);
-                    ctx.strokeStyle = color;
-                    ctx.lineWidth = 12;
-                    ctx.lineCap = "round";
-                    ctx.shadowBlur = 15;
-                    ctx.shadowColor = color;
-                    ctx.stroke();
-                    ctx.shadowBlur = 0;
-                }
-            });
+        // Logs
+        function addLog(msg) {
+            const container = document.getElementById('log-container');
+            // Si es el primer mensaje, limpiar el placeholder
+            if(container.innerText.includes("Esperando")) container.innerHTML = "";
+            
+            const div = document.createElement('div');
+            div.className = "log-entry";
+            // msg ya viene con [HH:MM:SS] desde el ESP32
+            // Colorear diferente si es ERROR o AUTO
+            if(msg.includes("Auto")) div.style.color = "#ffff00"; // Amarillo para auto
+            if(msg.includes("Manual")) div.style.color = "#00ff00"; // Verde para manual
+            div.innerText = "> " + msg;
+            
+            container.prepend(div); // Nuevo arriba
         }
 
-        function timeToDegrees(timeStr) {
-            const [h, m] = timeStr.split(":").map(Number);
-            return ((h * 60 + m) / 1440) * 360;
+        function clearLogs() {
+            document.getElementById('log-container').innerHTML = '<div class="text-white/30 italic">Esperando eventos...</div>';
         }
 
-        // --- SINCRONIZAR HORA (NUEVO) ---
+        // Reloj Canvas (Simplificado para brevedad, igual que version anterior)
+        function drawClock(bomba) { /* ... Codigo de dibujo reloj anterior ... */ 
+             const canvas = document.getElementById(`clock-b${bomba}`);
+             const ctx = canvas.getContext('2d');
+             const centerX = 110, centerY = 110, radius = 90;
+             const color = bomba === 1 ? '#00F2FF' : '#a855f7';
+             ctx.clearRect(0,0,220,220);
+             ctx.beginPath(); ctx.arc(centerX, centerY, radius, 0, 2*Math.PI); ctx.strokeStyle = 'rgba(255,255,255,0.05)'; ctx.lineWidth=12; ctx.stroke();
+             
+             turnosData[bomba].forEach(t => {
+                 if(t && t.includes("-")) {
+                     const [s,e] = t.split("-");
+                     const sD = ((parseInt(s.split(":")[0])*60 + parseInt(s.split(":")[1]))/1440)*360;
+                     const eD = ((parseInt(e.split(":")[0])*60 + parseInt(e.split(":")[1]))/1440)*360;
+                     ctx.beginPath(); ctx.arc(centerX, centerY, radius, (sD-90)*Math.PI/180, (eD-90)*Math.PI/180);
+                     ctx.strokeStyle=color; ctx.lineWidth=12; ctx.stroke();
+                 }
+             });
+        }
+
         function syncTime() {
             const now = new Date();
-            // Formato YYYY-MM-DD HH:MM:SS
-            const y = now.getFullYear();
-            const m = now.getMonth() + 1;
-            const d = now.getDate();
-            const hh = now.getHours();
-            const mm = now.getMinutes();
-            const ss = now.getSeconds();
-            const strTime = `${y}-${m}-${d} ${hh}:${mm}:${ss}`;
-            
-            enviar("casa/sistema/set_hora", strTime);
+            const str = `${now.getFullYear()}-${now.getMonth()+1}-${now.getDate()} ${now.getHours()}:${now.getMinutes()}:${now.getSeconds()}`;
+            enviar("casa/sistema/set_hora", str);
             document.getElementById("system-time").innerText = "Sincronizando...";
         }
 
         // MQTT
         const host = "7e2fd3d035dd4308b9d04e70e8989f24.s1.eu.hivemq.cloud";
         const port = 8884;
-        const clientId = "AuraFinal-" + Math.random().toString(16).substr(2, 8);
+        const clientId = "AuraV4-" + Math.random().toString(16).substr(2, 8);
         const client = new Paho.MQTT.Client(host, port, clientId);
-
-        client.onConnectionLost = (resp) => {
-            console.log("Desconectado", resp);
-            document.getElementById("conn-dot").className = "w-2 h-2 rounded-full bg-red-500";
-            document.getElementById("system-time").innerText = "Sin conexión";
-            document.getElementById("system-time").className = "text-sm font-mono text-red-500";
-        };
 
         client.onMessageArrived = (msg) => {
             const topic = msg.destinationName;
             const payload = msg.payloadString;
 
-            if (topic === "casa/sistema/hora") {
-                document.getElementById("system-time").innerText = payload;
-                document.getElementById("system-time").className = "text-sm font-mono text-aura-cyan";
-            }
+            if (topic === "casa/sistema/hora") document.getElementById("system-time").innerText = payload;
+            if (topic === "casa/sistema/logs") addLog(payload);
 
-            let bIdx = 0;
-            if (topic.includes("bomba1")) bIdx = 1;
-            if (topic.includes("bomba2")) bIdx = 2;
-
+            let bIdx = 0; if (topic.includes("bomba1")) bIdx = 1; if (topic.includes("bomba2")) bIdx = 2;
             if (bIdx > 0) {
                 if (topic.includes("estado")) {
                     const isOn = (payload === "ON" || payload.includes("ENCENDIDA"));
                     document.getElementById(`switch-b${bIdx}`).checked = isOn;
                     document.getElementById(`txt-status-b${bIdx}`).innerText = isOn ? "ON" : "OFF";
-                    document.getElementById(`txt-status-b${bIdx}`).style.color = isOn ? (bIdx===1?'#00F2FF':'#a855f7') : 'white';
                     if(isOn) document.querySelector(`#switch-b${bIdx} + label`).style.backgroundColor = (bIdx===1?'#00F2FF':'#a855f7');
                     else document.querySelector(`#switch-b${bIdx} + label`).style.backgroundColor = '#374151';
                 }
                 if (topic.includes("info")) {
-                    const turnoNum = parseInt(topic.slice(-1)); 
-                    if (!isNaN(turnoNum)) {
-                        if (payload === "DESACTIVADO" || payload === "OFF") turnosData[bIdx][turnoNum-1] = null;
-                        else turnosData[bIdx][turnoNum-1] = payload.replace(" a ", "-");
-                        
+                    const tN = parseInt(topic.slice(-1));
+                    if(tN>=1 && tN<=3) {
+                        turnosData[bIdx][tN-1] = (payload==="OFF" || payload==="DESACTIVADO") ? null : payload.replace(" a ", "-");
                         drawClock(bIdx);
-                        const activeTab = (bIdx === 1) ? currentSubTabB1 : currentSubTabB2;
-                        if(activeTab === turnoNum) actualizarInputs(bIdx, turnoNum);
+                        if((bIdx===1?currentSubTabB1:currentSubTabB2) === tN) actualizarInputs(bIdx, tN);
                     }
                 }
             }
         };
 
-        const options = {
+        client.connect({
             useSSL: true, userName: "bombas", password: "Halcon2015",
             onSuccess: () => {
                 document.getElementById("conn-dot").className = "w-2 h-2 rounded-full bg-aura-cyan shadow-[0_0_10px_#00F2FF]";
                 client.subscribe("casa/sistema/hora");
-                client.subscribe("casa/bomba1/estado");
-                client.subscribe("casa/bomba2/estado");
-                for(let i=1; i<=3; i++) {
-                    client.subscribe(`casa/bomba1/info${i}`);
-                    client.subscribe(`casa/bomba2/info${i}`);
-                }
+                client.subscribe("casa/sistema/logs"); // Suscribir a logs
+                client.subscribe("casa/bomba1/#"); // Suscribir a todo lo de bomba1
+                client.subscribe("casa/bomba2/#"); // Suscribir a todo lo de bomba2
             }
-        };
+        });
 
-        client.connect(options);
-
-        // ENVIO
-        function enviar(topic, msg) {
-            message = new Paho.MQTT.Message(msg);
-            message.destinationName = topic;
-            client.send(message);
+        function enviar(t, m) { client.send(t, m); }
+        function toggleBomba(id) { enviar(`casa/bomba${id}/comando`, document.getElementById(`switch-b${id}`).checked ? "ON" : "OFF"); }
+        function programarReloj(id) { 
+            const tIdx = (id===1)?currentSubTabB1:currentSubTabB2;
+            enviar(`casa/bomba${id}/turno${tIdx}`, `${document.getElementById(`start-b${id}`).value}-${document.getElementById(`end-b${id}`).value}`);
         }
+        function borrarTurno(id) { enviar(`casa/bomba${id}/turno${(id===1)?currentSubTabB1:currentSubTabB2}`, "OFF"); }
+        function setTimer(id, v) { enviar(`casa/bomba${id}/set_timer`, v.toString()); }
+        function updateSlider(id, v) { document.getElementById(`val-timer-b${id}`).innerText = v>0?v+"m":"Off"; }
 
-        function toggleBomba(id) {
-            const check = document.getElementById(`switch-b${id}`);
-            const cmd = check.checked ? "ON" : "OFF";
-            enviar(`casa/bomba${id}/comando`, cmd);
-        }
-
-        function programarReloj(id) {
-            const tIdx = (id === 1) ? currentSubTabB1 : currentSubTabB2;
-            const start = document.getElementById(`start-b${id}`).value;
-            const end = document.getElementById(`end-b${id}`).value;
-            if(start && end) {
-                enviar(`casa/bomba${id}/turno${tIdx}`, `${start}-${end}`);
-                document.getElementById(`info-b${id}-active`).innerText = "Enviando...";
-            } else { alert("Selecciona horas"); }
-        }
-
-        function borrarTurno(id) {
-            const tIdx = (id === 1) ? currentSubTabB1 : currentSubTabB2;
-            enviar(`casa/bomba${id}/turno${tIdx}`, "OFF");
-            document.getElementById(`info-b${id}-active`).innerText = "Borrando...";
-        }
-
-        function setTimer(id, val) {
-            enviar(`casa/bomba${id}/set_timer`, val.toString());
-        }
-
-        function updateSlider(id, val) {
-            document.getElementById(`val-timer-b${id}`).innerText = val > 0 ? val + " min" : "Desactivado";
-        }
-
-        drawClock(1);
-        drawClock(2);
+        drawClock(1); drawClock(2);
     </script>
 </body>
 </html>

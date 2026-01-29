@@ -3,34 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
-    <title>Aura Control - Full Logs</title>
+    <title>Aura Control - Juan & Guille</title>
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
             theme: {
-                extend: { colors: { 'aura-black': '#050505', 'aura-cyan': '#00F2FF', 'aura-purple': '#a855f7', 'aura-panel': '#111111', 'aura-log': '#0a0a0a' } }
+                extend: {
+                    colors: {
+                        'aura-black': '#050505',
+                        'aura-cyan': '#00F2FF',
+                        'aura-purple': '#a855f7',
+                        'aura-panel': '#111111',
+                        'aura-log': '#0a0a0a'
+                    }
+                }
             }
         }
     </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
+
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #050505; color: white; overflow-x: hidden; }
+        
         .tab-content { display: none; opacity: 0; transition: opacity 0.3s ease; }
         .tab-content.active { display: block; opacity: 1; }
+
+        /* SWITCH PERSONALIZADO */
         .toggle-checkbox:checked { right: 0; border-color: #00F2FF; }
         .toggle-checkbox:checked + .toggle-label { background-color: #00F2FF; }
         .toggle-checkbox { right: 50%; }
         .toggle-label { width: 3.5rem; height: 1.75rem; }
+
         input[type="time"] { color-scheme: dark; }
         #tsparticles { position: fixed; inset: 0; z-index: -10; }
-        /* Estilo Log */
-        .log-entry { font-family: 'Courier New', monospace; font-size: 12px; border-bottom: 1px solid #222; padding: 4px 0; animation: fadein 0.3s; }
-        .log-time { color: #666; margin-right: 8px; }
-        @keyframes fadein { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* MENU LATERAL */
+        #sidebar { transition: transform 0.3s ease-in-out; }
+        .backdrop { transition: opacity 0.3s ease-in-out; }
     </style>
 </head>
 
 <body class="bg-aura-black text-white selection:bg-aura-cyan/30">
+
     <div id="tsparticles"></div>
 
     <div id="lock-screen" class="fixed inset-0 z-[100] bg-black/95 flex flex-col items-center justify-center">
@@ -42,10 +57,41 @@
         </div>
     </div>
 
+    <div id="sidebar-backdrop" onclick="toggleSidebar()" class="fixed inset-0 bg-black/80 z-[60] hidden backdrop opacity-0"></div>
+    <div id="sidebar" class="fixed inset-y-0 left-0 w-64 bg-aura-panel border-r border-white/10 z-[70] transform -translate-x-full flex flex-col p-6 shadow-2xl shadow-aura-cyan/20">
+        <div class="flex items-center gap-2 mb-10">
+            <div class="w-3 h-3 rounded-full bg-aura-cyan shadow-[0_0_10px_#00F2FF]"></div>
+            <span class="font-bold tracking-widest text-xl">MENU</span>
+        </div>
+        
+        <nav class="flex flex-col gap-4">
+            <button onclick="switchTab('juan'); toggleSidebar()" id="link-juan" class="text-left p-4 rounded-xl bg-white/5 hover:bg-aura-cyan hover:text-black transition-all font-bold border border-white/5 flex items-center justify-between group">
+                JUAN (Bomba 1)
+                <span class="w-2 h-2 rounded-full bg-aura-cyan opacity-0 group-hover:opacity-100 transition-opacity"></span>
+            </button>
+            <button onclick="switchTab('guille'); toggleSidebar()" id="link-guille" class="text-left p-4 rounded-xl bg-white/5 hover:bg-aura-purple hover:text-black transition-all font-bold border border-white/5 flex items-center justify-between group">
+                GUILLE (Bomba 2)
+                <span class="w-2 h-2 rounded-full bg-aura-purple opacity-0 group-hover:opacity-100 transition-opacity"></span>
+            </button>
+            <button onclick="switchTab('logs'); toggleSidebar()" id="link-logs" class="text-left p-4 rounded-xl bg-white/5 hover:bg-white hover:text-black transition-all font-bold border border-white/5">
+                LOGS SISTEMA
+            </button>
+        </nav>
+
+        <div class="mt-auto text-xs text-white/20 text-center">
+            Aura Control v5.0
+        </div>
+    </div>
+
     <nav class="fixed top-0 w-full z-50 bg-black/80 backdrop-blur-md border-b border-white/10 px-4 py-3 flex justify-between items-center">
-        <div class="flex items-center gap-2">
-            <div id="conn-dot" class="w-2 h-2 rounded-full bg-red-500"></div>
-            <span class="font-bold tracking-widest text-sm">AURA <span class="text-aura-cyan">V4</span></span>
+        <div class="flex items-center gap-4">
+            <button onclick="toggleSidebar()" class="p-2 -ml-2 text-white hover:text-aura-cyan transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+            </button>
+            <div class="flex items-center gap-2">
+                <div id="conn-dot" class="w-2 h-2 rounded-full bg-red-500"></div>
+                <span class="font-bold tracking-widest text-sm">AURA <span class="text-aura-cyan">V5</span></span>
+            </div>
         </div>
         <div class="text-right">
             <p class="text-[10px] text-white/40 uppercase">Hora Sistema</p>
@@ -56,18 +102,11 @@
         </div>
     </nav>
 
-    <div class="fixed top-16 w-full z-40 px-4">
-        <div class="flex bg-aura-panel rounded-xl p-1 border border-white/10">
-            <button onclick="switchTab('juan')" id="btn-juan" class="flex-1 py-3 rounded-lg text-xs font-black tracking-wider transition-all bg-aura-cyan text-black">JUAN</button>
-            <button onclick="switchTab('guille')" id="btn-guille" class="flex-1 py-3 rounded-lg text-xs font-black tracking-wider transition-all text-white/50 hover:text-white">GUILLE</button>
-            <button onclick="switchTab('logs')" id="btn-logs" class="flex-1 py-3 rounded-lg text-xs font-black tracking-wider transition-all text-white/50 hover:text-white">LOGS</button>
-        </div>
-    </div>
-
-    <main class="pt-36 pb-10 px-4 min-h-screen flex flex-col items-center w-full max-w-lg mx-auto">
+    <main class="pt-24 pb-10 px-4 min-h-screen flex flex-col items-center w-full max-w-lg mx-auto">
         
         <div id="tab-juan" class="tab-content active w-full">
             <div class="p-6 rounded-3xl bg-aura-panel border border-white/10 relative">
+                
                 <div class="flex justify-center mb-6 relative">
                     <canvas id="clock-b1" width="220" height="220"></canvas>
                     <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
@@ -75,13 +114,15 @@
                         <span id="txt-status-b1" class="text-xl font-bold text-white">OFF</span>
                     </div>
                 </div>
+
                 <div class="flex justify-between items-center mb-6 bg-white/5 p-4 rounded-xl border border-white/5">
-                    <span class="font-bold text-lg text-white">Bomba Cocina</span>
+                    <span class="font-bold text-lg text-white">Bomba 1 (Juan)</span>
                     <div class="relative inline-block w-14 align-middle select-none">
                         <input type="checkbox" id="switch-b1" class="toggle-checkbox absolute block w-7 h-7 rounded-full bg-white border-4 border-aura-panel appearance-none cursor-pointer" onchange="toggleBomba(1)">
                         <label for="switch-b1" class="toggle-label block overflow-hidden h-7 rounded-full bg-gray-700 cursor-pointer transition-colors duration-300"></label>
                     </div>
                 </div>
+
                 <div class="bg-black/30 rounded-2xl p-5 border border-white/5 mb-4">
                     <div class="flex justify-between items-center mb-4">
                         <span class="text-xs text-aura-cyan uppercase font-bold">Turnos</span>
@@ -96,7 +137,7 @@
                         <input type="time" id="end-b1" class="w-1/2 bg-white/5 border border-white/10 rounded-lg py-2 px-1 text-center outline-none focus:border-aura-cyan">
                     </div>
                     <div class="flex gap-2">
-                        <button onclick="borrarTurno(1)" class="flex-1 py-2 bg-red-500/10 text-red-500 rounded-lg text-xs font-bold">BORRAR</button>
+                        <button onclick="borrarTurno(1)" class="flex-1 py-2 bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white rounded-lg text-xs font-bold">BORRAR</button>
                         <button onclick="programarReloj(1)" class="flex-[2] py-2 bg-white/10 hover:bg-aura-cyan hover:text-black rounded-lg text-xs font-bold">GUARDAR</button>
                     </div>
                     <p id="info-b1-active" class="text-xs text-center mt-3 text-white/40 h-4">--</p>
@@ -118,7 +159,7 @@
                     </div>
                 </div>
                 <div class="flex justify-between items-center mb-6 bg-white/5 p-4 rounded-xl border border-white/5">
-                    <span class="font-bold text-lg text-white">Bomba Riego</span>
+                    <span class="font-bold text-lg text-white">Bomba 2 (Guille)</span>
                     <div class="relative inline-block w-14 align-middle select-none">
                         <input type="checkbox" id="switch-b2" class="toggle-checkbox absolute block w-7 h-7 rounded-full bg-white border-4 border-aura-panel appearance-none cursor-pointer" onchange="toggleBomba(2)">
                         <label for="switch-b2" class="toggle-label block overflow-hidden h-7 rounded-full bg-gray-700 cursor-pointer transition-colors duration-300"></label>
@@ -172,31 +213,54 @@
         let currentSubTabB1 = 1, currentSubTabB2 = 1;
         const turnosData = { 1: [null, null, null], 2: [null, null, null] };
 
+        // INIT: Chequear Link y Auth
+        window.onload = function() {
+            if(localStorage.getItem('aura_v5_auth') === 'ok') document.getElementById('lock-screen').style.display = 'none';
+            
+            // LOGICA LINK DIRECTO (DEEP LINKING)
+            const params = new URLSearchParams(window.location.search);
+            const tabParam = params.get('tab'); // busca ?tab=...
+            if(tabParam) {
+                if(tabParam === 'juan' || tabParam === 'guille' || tabParam === 'logs') {
+                    switchTab(tabParam);
+                }
+            }
+        };
+
         function verificarPassword() {
             if(document.getElementById('pass-input').value === CLAVE) {
                 document.getElementById('lock-screen').style.opacity = '0';
                 setTimeout(() => document.getElementById('lock-screen').style.display = 'none', 500);
-                localStorage.setItem('aura_v4_auth', 'ok');
+                localStorage.setItem('aura_v5_auth', 'ok');
             } else { document.getElementById('error-msg').classList.remove('hidden'); }
         }
-        if(localStorage.getItem('aura_v4_auth') === 'ok') document.getElementById('lock-screen').style.display = 'none';
+
+        // MENU LATERAL
+        function toggleSidebar() {
+            const sb = document.getElementById('sidebar');
+            const bd = document.getElementById('sidebar-backdrop');
+            if(sb.classList.contains('-translate-x-full')) {
+                sb.classList.remove('-translate-x-full');
+                bd.classList.remove('hidden');
+                setTimeout(()=>bd.classList.remove('opacity-0'), 10);
+            } else {
+                sb.classList.add('-translate-x-full');
+                bd.classList.add('opacity-0');
+                setTimeout(()=>bd.classList.add('hidden'), 300);
+            }
+        }
 
         function switchTab(tab) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            // Reset styles sidebar
             ['juan','guille','logs'].forEach(t => {
-                document.getElementById('btn-'+t).className = "flex-1 py-3 rounded-lg text-xs font-black tracking-wider transition-all text-white/50 hover:text-white";
+                document.getElementById('link-'+t).classList.remove('bg-white/20', 'border-white/20');
             });
-            document.getElementById('tab-' + tab).classList.add('active');
             
-            const styles = {
-                'juan': 'bg-aura-cyan text-black shadow-[0_0_20px_rgba(0,242,255,0.3)]',
-                'guille': 'bg-aura-purple text-black shadow-[0_0_20px_rgba(168,85,247,0.3)]',
-                'logs': 'bg-white text-black shadow-[0_0_20px_rgba(255,255,255,0.3)]'
-            };
-            document.getElementById('btn-'+tab).className = "flex-1 py-3 rounded-lg text-xs font-black tracking-wider transition-all " + styles[tab];
+            document.getElementById('tab-' + tab).classList.add('active');
+            document.getElementById('link-'+tab).classList.add('bg-white/20', 'border-white/20');
         }
 
-        // Subtabs y Inputs igual que antes...
         function setSubTab(bomba, turno) {
             const color = bomba === 1 ? 'aura-cyan' : 'aura-purple';
             for(let i=1; i<=3; i++) {
@@ -226,35 +290,29 @@
             }
         }
 
-        // Logs
         function addLog(msg) {
             const container = document.getElementById('log-container');
-            // Si es el primer mensaje, limpiar el placeholder
             if(container.innerText.includes("Esperando")) container.innerHTML = "";
-            
             const div = document.createElement('div');
             div.className = "log-entry";
-            // msg ya viene con [HH:MM:SS] desde el ESP32
-            // Colorear diferente si es ERROR o AUTO
-            if(msg.includes("Auto")) div.style.color = "#ffff00"; // Amarillo para auto
-            if(msg.includes("Manual")) div.style.color = "#00ff00"; // Verde para manual
+            if(msg.includes("Auto")) div.style.color = "#ffff00"; 
+            if(msg.includes("Manual")) div.style.color = "#00ff00"; 
             div.innerText = "> " + msg;
-            
-            container.prepend(div); // Nuevo arriba
+            container.prepend(div); 
         }
 
-        function clearLogs() {
-            document.getElementById('log-container').innerHTML = '<div class="text-white/30 italic">Esperando eventos...</div>';
-        }
+        function clearLogs() { document.getElementById('log-container').innerHTML = '<div class="text-white/30 italic">Esperando eventos...</div>'; }
 
-        // Reloj Canvas (Simplificado para brevedad, igual que version anterior)
-        function drawClock(bomba) { /* ... Codigo de dibujo reloj anterior ... */ 
+        function drawClock(bomba) {
              const canvas = document.getElementById(`clock-b${bomba}`);
              const ctx = canvas.getContext('2d');
              const centerX = 110, centerY = 110, radius = 90;
              const color = bomba === 1 ? '#00F2FF' : '#a855f7';
              ctx.clearRect(0,0,220,220);
              ctx.beginPath(); ctx.arc(centerX, centerY, radius, 0, 2*Math.PI); ctx.strokeStyle = 'rgba(255,255,255,0.05)'; ctx.lineWidth=12; ctx.stroke();
+             ctx.font = "10px monospace"; ctx.fillStyle = "rgba(255,255,255,0.3)"; ctx.textAlign = "center";
+             ctx.fillText("00h", centerX, centerY-radius-12); ctx.fillText("12h", centerX, centerY+radius+20);
+             ctx.fillText("06h", centerX+radius+20, centerY+3); ctx.fillText("18h", centerX-radius-20, centerY+3);
              
              turnosData[bomba].forEach(t => {
                  if(t && t.includes("-")) {
@@ -274,10 +332,9 @@
             document.getElementById("system-time").innerText = "Sincronizando...";
         }
 
-        // MQTT
         const host = "7e2fd3d035dd4308b9d04e70e8989f24.s1.eu.hivemq.cloud";
         const port = 8884;
-        const clientId = "AuraV4-" + Math.random().toString(16).substr(2, 8);
+        const clientId = "AuraV5-" + Math.random().toString(16).substr(2, 8);
         const client = new Paho.MQTT.Client(host, port, clientId);
 
         client.onMessageArrived = (msg) => {
@@ -312,9 +369,9 @@
             onSuccess: () => {
                 document.getElementById("conn-dot").className = "w-2 h-2 rounded-full bg-aura-cyan shadow-[0_0_10px_#00F2FF]";
                 client.subscribe("casa/sistema/hora");
-                client.subscribe("casa/sistema/logs"); // Suscribir a logs
-                client.subscribe("casa/bomba1/#"); // Suscribir a todo lo de bomba1
-                client.subscribe("casa/bomba2/#"); // Suscribir a todo lo de bomba2
+                client.subscribe("casa/sistema/logs"); 
+                client.subscribe("casa/bomba1/#"); 
+                client.subscribe("casa/bomba2/#"); 
             }
         });
 
